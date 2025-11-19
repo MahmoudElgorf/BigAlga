@@ -1,0 +1,56 @@
+name: bioalga
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  image_picker: ^1.2.0
+  shared_preferences: ^2.5.3
+  http: ^1.1.0
+  camera: ^0.10.5
+  path_provider: ^2.1.5
+  path: ^1.8.3
+  tflite_flutter: ^0.12.1
+  image: ^4.5.4
+  printing: ^5.14.2
+  pdf: ^3.11.3
+  open_file: ^3.5.10
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_native_splash: ^2.3.6
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/models/
+    - assets/images/App_Logo.png
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/images/App_Logo.png
+  android: true
+  ios: true
+  android_12:
+    color: "#FFFFFF"
+    image: assets/images/App_Logo.png
+  web: false
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/App_Logo.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/App_Logo.png"

@@ -1,0 +1,278 @@
+import 'dart:io';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import '../constants/constants.dart';
+
+class PDFService {
+  static Future<void> generateAndSaveReport(Map<String, dynamic> results, File? imageFile) async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              pw.SizedBox(height: 20),
+
+              _buildResultsSection(results),
+              pw.SizedBox(height: 20),
+
+              _buildAlgaeInfo(results['topPrediction']['label']),
+              pw.SizedBox(height: 20),
+
+              _buildFooter(),
+            ],
+          );
+        },
+      ),
+    );
+
+    // حفظ الملف على الجهاز
+    await _savePDFToDevice(pdf, results['topPrediction']['label']);
+  }
+
+  static Future<void> _savePDFToDevice(pw.Document pdf, String algaeName) async {
+    try {
+      // الحصول على مجلد التخزين
+      final directory = await getExternalStorageDirectory();
+      final downloadsDirectory = Directory('${directory?.path}/Download');
+
+      // إنشاء مجلد التحميل إذا لم يكن موجوداً
+      if (!await downloadsDirectory.exists()) {
+        await downloadsDirectory.create(recursive: true);
+      }
+
+      // إنشاء اسم الملف
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'BioAlga_Report_${algaeName}_$timestamp.pdf';
+      final filePath = '${downloadsDirectory.path}/$fileName';
+
+      // حفظ الملف
+      final file = File(filePath);
+      await file.writeAsBytes(await pdf.save());
+
+      // فتح الملف بعد الحفظ
+      await OpenFile.open(filePath);
+
+    } catch (e) {
+      throw Exception('Failed to save PDF: $e');
+    }
+  }
+
+  static pw.Widget _buildHeader() {
+    return pw.Column(
+      children: [
+        pw.Text(
+          'BioAlga - Scientific Report',
+          style: pw.TextStyle(
+            fontSize: 24,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.blue,
+          ),
+        ),
+        pw.Text(
+          'Algae Analysis Report',
+          style: pw.TextStyle(fontSize: 16, color: PdfColors.grey),
+        ),
+        pw.Divider(),
+      ],
+    );
+  }
+
+  static pw.Widget _buildResultsSection(Map<String, dynamic> results) {
+    final topPrediction = results['topPrediction'];
+    final confidence = (topPrediction['confidence'] * 100).toStringAsFixed(1);
+
+    return pw.Container(
+      padding: pw.EdgeInsets.all(15),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.blue),
+        borderRadius: pw.BorderRadius.circular(10),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            'Analysis Results',
+            style: pw.TextStyle(
+              fontSize: 18,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.blue,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+          pw.Row(
+            children: [
+              pw.Text('Algae Type: ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              pw.Text(topPrediction['label']),
+            ],
+          ),
+          pw.SizedBox(height: 5),
+          pw.Row(
+            children: [
+              pw.Text('Confidence Level: ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              pw.Text('$confidence%'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildAlgaeInfo(String algaeType) {
+    final info = _getAlgaeInfo(algaeType);
+
+    return pw.Container(
+      padding: pw.EdgeInsets.all(15),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.green),
+        borderRadius: pw.BorderRadius.circular(10),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            'Scientific Profile',
+            style: pw.TextStyle(
+              fontSize: 18,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.green,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+          pw.Text('Scientific Name: ${info['scientificName']}'),
+          pw.SizedBox(height: 5),
+          pw.Text('Description: ${info['description']}'),
+          pw.SizedBox(height: 5),
+          pw.Text('Characteristics: ${info['characteristics']}'),
+          pw.SizedBox(height: 5),
+          pw.Text('Toxicity Level: ${info['toxicity']}'),
+          pw.SizedBox(height: 5),
+          pw.Text('Habitat: ${info['habitat']}'),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildFooter() {
+    return pw.Column(
+      children: [
+        pw.Divider(),
+        pw.Text(
+          'Generated by BioAlga - Scientific Algae Analysis',
+          style: pw.TextStyle(
+            fontSize: 12,
+            color: PdfColors.grey,
+            fontStyle: pw.FontStyle.italic,
+          ),
+        ),
+        pw.Text(
+          '${DateTime.now().toString().split(' ')[0]}',
+          style: pw.TextStyle(fontSize: 10, color: PdfColors.grey),
+        ),
+      ],
+    );
+  }
+
+  static Map<String, String> _getAlgaeInfo(String type) {
+    final algaeData = {
+      'Anabaena': {
+        'scientificName': 'Anabaena spp.',
+        'description': 'Filamentous cyanobacteria known for forming specialized cells called heterocysts for nitrogen fixation.',
+        'characteristics': 'Filamentous, forms chains of cells, capable of nitrogen fixation, produces specialized heterocyst cells.',
+        'toxicity': 'Can produce neurotoxins (anatoxins) and hepatotoxins. Potentially toxic blooms require monitoring.',
+        'habitat': 'Freshwater lakes, ponds, slow-moving rivers. Forms surface blooms in nutrient-rich waters.',
+      },
+      'Aphanizomenon': {
+        'scientificName': 'Aphanizomenon spp.',
+        'description': 'Filamentous cyanobacteria forming straight or slightly curved trichomes, often forming dense surface scums.',
+        'characteristics': 'Forms rafts or bundles of filaments, gas vesicles for buoyancy, straight trichome structure.',
+        'toxicity': 'Can produce neurotoxins (saxitoxins) and cytotoxins. Some strains are toxic to animals and humans.',
+        'habitat': 'Eutrophic freshwater systems, lakes, reservoirs. Prefers calm, nutrient-rich waters.',
+      },
+      'Gymnodinium': {
+        'scientificName': 'Gymnodinium spp.',
+        'description': 'Unarmored dinoflagellate with distinctive swimming behavior and diverse ecological roles.',
+        'characteristics': 'Naked cell without thecal plates, two flagella for movement, mixotrophic capabilities.',
+        'toxicity': 'Some species produce potent neurotoxins. Can cause harmful algal blooms (red tides).',
+        'habitat': 'Marine and brackish waters worldwide. Both coastal and open ocean environments.',
+      },
+      'Karenia': {
+        'scientificName': 'Karenia spp.',
+        'description': 'Unarmored dinoflagellate genus including species responsible for major red tide events.',
+        'characteristics': 'Golden-brown color, unarmored, photosynthetic, forms dense surface aggregations.',
+        'toxicity': 'Produces brevetoxins that affect nervous system. Causes fish kills and respiratory irritation.',
+        'habitat': 'Coastal marine waters, particularly in warm temperate to tropical regions.',
+      },
+      'Microcystis': {
+        'scientificName': 'Microcystis spp.',
+        'description': 'Colonial cyanobacteria forming irregular-shaped colonies with gas vesicles for buoyancy control.',
+        'characteristics': 'Forms spherical or irregular colonies, cells embedded in gelatinous matrix, gas vesicles present.',
+        'toxicity': 'Produces microcystins - potent hepatotoxins. Major concern for drinking water safety.',
+        'habitat': 'Eutrophic freshwater lakes, reservoirs worldwide. Thrives in warm, nutrient-rich conditions.',
+      },
+      'Noctiluca': {
+        'scientificName': 'Noctiluca scintillans',
+        'description': 'Large, bioluminescent dinoflagellate known for creating spectacular "sea sparkle" displays at night.',
+        'characteristics': 'Large spherical cells (up to 2mm), bioluminescent, phagotrophic feeding on other plankton.',
+        'toxicity': 'Generally non-toxic but can cause ecological disruptions through massive bloom formations.',
+        'habitat': 'Coastal marine waters worldwide. Often forms red or green tides in nutrient-rich areas.',
+      },
+      'Nodularia': {
+        'scientificName': 'Nodularia spp.',
+        'description': 'Filamentous cyanobacteria with barrel-shaped cells and specialized nitrogen-fixing heterocysts.',
+        'characteristics': 'Straight filaments, barrel-shaped cells, forms heterocysts, gas vesicles for buoyancy.',
+        'toxicity': 'Produces nodularin, a potent hepatotoxin similar to microcystin. Toxic to liver tissues.',
+        'habitat': 'Brackish waters, estuaries, Baltic Sea. Tolerant of varying salinity conditions.',
+      },
+      'Nostoc': {
+        'scientificName': 'Nostoc spp.',
+        'description': 'Filamentous cyanobacteria forming gelatinous colonies, capable of nitrogen fixation in specialized cells.',
+        'characteristics': 'Forms gelatinous colonies, beads-on-string appearance, heterocysts for nitrogen fixation.',
+        'toxicity': 'Generally non-toxic. Some strains may produce minor toxins but not typically harmful.',
+        'habitat': 'Diverse habitats including freshwater, terrestrial environments, and symbiotic associations.',
+      },
+      'Oscillatoria': {
+        'scientificName': 'Oscillatoria spp.',
+        'description': 'Filamentous cyanobacteria exhibiting oscillating movement, forming dense mats in aquatic systems.',
+        'characteristics': 'Long, straight filaments, gliding motility, forms surface scums and benthic mats.',
+        'toxicity': 'Some species produce microcystins and other toxins. Toxicity varies among strains.',
+        'habitat': 'Freshwater systems, wastewater treatment plants, benthic zones of lakes and rivers.',
+      },
+      'Prorocentrum': {
+        'scientificName': 'Prorocentrum spp.',
+        'description': 'Armored dinoflagellate with distinctive valve structure, important in marine plankton communities.',
+        'characteristics': 'Bivalve thecal plates, flagella insertion, photosynthetic, some species mixotrophic.',
+        'toxicity': 'Some species produce okadaic acid causing diarrhetic shellfish poisoning (DSP).',
+        'habitat': 'Coastal marine waters, coral reefs, mangrove ecosystems worldwide.',
+      },
+      'Skeletonema': {
+        'scientificName': 'Skeletonema spp.',
+        'description': 'Centric diatom forming long chains connected by marginal processes, important in marine food webs.',
+        'characteristics': 'Forms long chains, cylindrical cells, marginal linking processes, silica frustule.',
+        'toxicity': 'Non-toxic. Important primary producer supporting marine food webs.',
+        'habitat': 'Coastal and oceanic waters worldwide. Often dominates spring phytoplankton blooms.',
+      },
+      'nontoxic': {
+        'scientificName': 'Non-toxic Algae Species',
+        'description': 'This algae specimen has been classified as non-toxic based on current analysis methods.',
+        'characteristics': 'Safe for aquatic ecosystems, does not produce harmful toxins, supports healthy food webs.',
+        'toxicity': 'Non-toxic - Safe for environment and human contact',
+        'habitat': 'Various aquatic environments including freshwater, marine, and brackish systems.',
+      },
+      'default': {
+        'scientificName': 'Classification in progress',
+        'description': 'Scientific analysis and microscopic examination ongoing for precise species identification.',
+        'characteristics': 'Detailed morphological and genetic analysis underway for comprehensive characterization.',
+        'toxicity': 'Toxicity assessment in progress using advanced detection methods and bioassays.',
+        'habitat': 'Ecological habitat analysis and environmental preferences under investigation.',
+      },
+    };
+    return algaeData[type] ?? algaeData['default']!;
+  }
+}
