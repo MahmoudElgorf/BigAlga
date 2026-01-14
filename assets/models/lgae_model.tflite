@@ -1,1 +1,0 @@
-echo "TFLite Model Placeholder - Replace with actual trained model" > assets/models/algae_model.tflite

@@ -1,29 +1,35 @@
-<?xml
-    version="1.0"
-    encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- 🔐 صلاحيات Android المطلوبة -->
-    <uses-permission
-        android:name="android.permission.CAMERA"/>
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission
-        android:name="android.permission.INTERNET"/>
+
+    <!-- 🔐 الصلاحيات الأساسية -->
+
+    <!-- Android 13+ (API 33+) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <!-- Android 12 وما قبله -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+    <!-- الكاميرا (في حال استخدامها لاحقًا) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- الإنترنت -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- 📱 إعدادات الكاميرا (اختياري) -->
     <uses-feature
         android:name="android.hardware.camera"
-        android:required="false"/>
+        android:required="false" />
     <uses-feature
         android:name="android.hardware.camera.autofocus"
-        android:required="false"/>
+        android:required="false" />
+
     <application
         android:label="BioAlga"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="true"
         android:theme="@style/LaunchTheme">
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -33,60 +39,65 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
+
             <!-- 🎨 إعدادات الثيم -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
-                android:resource="@style/NormalTheme"/>
-            <!-- 🖼️ إعدادات شاشة البداية -->
+                android:resource="@style/NormalTheme" />
+
+            <!-- 🖼️ شاشة البداية -->
             <meta-data
                 android:name="io.flutter.embedding.android.SplashScreenDrawable"
-                android:resource="@drawable/launch_background"/>
-            <intent-filter
-                android:autoVerify="true">
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                android:resource="@drawable/launch_background" />
+
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
             <!-- 🌐 Deep Links (اختياري) -->
             <intent-filter>
-                <action
-                    android:name="android.intent.action.VIEW"/>
-                <category
-                    android:name="android.intent.category.DEFAULT"/>
-                <category
-                    android:name="android.intent.category.BROWSABLE"/>
-                <data
-                    android:scheme="bioalga"/>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="bioalga" />
             </intent-filter>
+
         </activity>
+
         <!-- 🔧 إعدادات Flutter -->
         <meta-data
             android:name="flutterEmbedding"
-            android:value="2"/>
-        <!-- 🏷️ إعدادات أخرى -->
+            android:value="2" />
+
+        <!-- 🏷️ ML Kit (اختياري) -->
         <meta-data
             android:name="com.google.mlkit.vision.DEPENDENCIES"
-            android:value="barcode"/>
+            android:value="barcode" />
+
     </application>
+
     <!-- 🔍 استعلامات النظام -->
     <queries>
+
         <intent>
-            <action
-                android:name="android.intent.action.PROCESS_TEXT"/>
-            <data
-                android:mimeType="text/plain"/>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
         </intent>
-        <!-- استعلامات لاختيار الصور -->
+
+        <!-- اختيار الصور -->
         <intent>
-            <action
-                android:name="android.media.action.IMAGE_CAPTURE"/>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
         </intent>
+
         <intent>
-            <action
-                android:name="android.intent.action.GET_CONTENT"/>
+            <action android:name="android.intent.action.GET_CONTENT" />
         </intent>
+
         <intent>
-            <action
-                android:name="android.intent.action.PICK"/>
+            <action android:name="android.intent.action.PICK" />
         </intent>
+
     </queries>
+
 </manifest>

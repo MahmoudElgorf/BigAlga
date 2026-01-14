@@ -1,11 +1,10 @@
-// lib/features/home/presentation/widgets/history_drawer.dart
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bioalga/core/constants/constants.dart';
+import 'package:flutter/material.dart';
 import 'package:bioalga/core/services/pdf_service.dart';
 import 'package:bioalga/core/services/history_service.dart';
 import 'package:bioalga/features/results/presentation/pages/results_page.dart';
+import 'package:bioalga/data/models/algae_model.dart';
 
 class HistoryDrawer extends StatefulWidget {
   @override
@@ -23,10 +22,7 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
   }
 
   Future<void> _loadHistory() async {
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     final history = await HistoryService.getAnalysisHistory();
     setState(() {
       _analysisHistory = history;
@@ -38,16 +34,19 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
     final confirmed = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Clear All History?'),
-        content: Text('This action cannot be undone.'),
+        title: const Text(AppStrings.confirmClear),
+        content: const Text(AppStrings.cannotUndo),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel'),
+            child: const Text(ButtonStrings.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Clear', style: TextStyle(color: Colors.red)),
+            child: Text(
+              ButtonStrings.delete,
+              style: TextStyle(color: AppColors.errorRed),
+            ),
           ),
         ],
       ),
@@ -56,42 +55,84 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
     if (confirmed == true) {
       await HistoryService.clearAllHistory();
       await _loadHistory();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('All history cleared'),
-          backgroundColor: AppColors.seaGreen,
-        ),
-      );
+      _showSnackBar('All history cleared', AppColors.successGreen);
     }
   }
 
   Future<void> _generatePDF(Map<String, dynamic> analysis) async {
     try {
-      await PDFService.generateAndSaveReport(analysis['results'], null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('PDF report generated successfully'),
-          backgroundColor: AppColors.seaGreen,
-        ),
+      final algaeResult = AlgaeResult(
+        name: analysis['algaeType'] ?? 'Unknown',
+        scientificName: analysis['scientificName'] ?? '${analysis['algaeType']} spp.',
+        confidence: (analysis['confidence'] is double
+            ? analysis['confidence']
+            : double.parse(analysis['confidence'].toString())),
+        confidenceLevel: analysis['confidenceLevel'] ?? AppStrings.medium,
+        benefits: analysis['benefits'] is List<String>
+            ? analysis['benefits']
+            : (analysis['benefits'] as List?)?.map((e) => e.toString()).toList() ?? [],
+        uses: analysis['uses'] is List<String>
+            ? analysis['uses']
+            : (analysis['uses'] as List?)?.map((e) => e.toString()).toList() ?? [],
+        allPredictions: [],
+        modelInfo: {'apiUsed': true, 'processingTime': 0},
+        dateTime: DateTime.now(),
+        isToxic: analysis['isToxic'] ?? false,
+        toxicityWarning: analysis['toxicityWarning'] ??
+            (analysis['isToxic'] == true ? AppStrings.handleWithCare : AppStrings.safe),
       );
+
+      await PDFService.generateAndSaveReport(
+        imageFile: File(analysis['imagePath']),
+        result: algaeResult,
+      );
+
+      _showSnackBar('PDF report generated successfully', AppColors.successGreen);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to generate PDF: $e'),
-          backgroundColor: AppColors.coral,
-        ),
-      );
+      print('❌ Error generating PDF from history: $e');
+      _showSnackBar(ErrorStrings.pdfSaveFailed, AppColors.errorRed);
     }
   }
 
   void _viewAnalysisDetails(Map<String, dynamic> analysis) {
+    final imageFile = File(analysis['imagePath']);
+
+    if (!imageFile.existsSync()) {
+      _showSnackBar('Image file not found', AppColors.errorRed);
+      return;
+    }
+
+    final algaeResult = AlgaeResult(
+      name: analysis['algaeType'] ?? 'Unknown',
+      scientificName: analysis['scientificName'] ?? '${analysis['algaeType']} spp.',
+      confidence: (analysis['confidence'] is double
+          ? analysis['confidence']
+          : double.parse(analysis['confidence'].toString())),
+      confidenceLevel: analysis['confidenceLevel'] ?? AppStrings.medium,
+      benefits: analysis['benefits'] is List<String>
+          ? analysis['benefits']
+          : (analysis['benefits'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      uses: analysis['uses'] is List<String>
+          ? analysis['uses']
+          : (analysis['uses'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      allPredictions: [],
+      modelInfo: {
+        'apiUsed': true,
+        'processingTime': 0,
+        'source': 'From history',
+      },
+      dateTime: DateTime.now(),
+      isToxic: analysis['isToxic'] ?? false,
+      toxicityWarning: analysis['toxicityWarning'] ??
+          (analysis['isToxic'] == true ? AppStrings.handleWithCare : AppStrings.safe),
+    );
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ResultsPage(
-          imageFile: File(analysis['imagePath']),
-          preloadedResults: analysis['results'],
+          imageFile: imageFile,
+          result: algaeResult,
         ),
       ),
     );
@@ -100,11 +141,15 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
   void _deleteAnalysis(String id) async {
     await HistoryService.deleteAnalysis(id);
     await _loadHistory();
+    _showSnackBar('Analysis deleted', AppColors.successGreen);
+  }
 
+  void _showSnackBar(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Analysis deleted'),
-        backgroundColor: AppColors.seaGreen,
+        content: Text(message),
+        backgroundColor: color,
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -120,9 +165,9 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              AppColors.deepBlue.withOpacity(0.95),
-              AppColors.oceanBlue.withOpacity(0.95),
-              AppColors.seaGreen.withOpacity(0.95),
+              AppColors.primaryBlue.withOpacity(0.95),
+              AppColors.secondaryBlue.withOpacity(0.95),
+              AppColors.accentGreen.withOpacity(0.95),
             ],
           ),
           boxShadow: [
@@ -173,24 +218,51 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
         children: [
           Row(
             children: [
-              Icon(Icons.history, color: Colors.white, size: 28),
-              SizedBox(width: 12),
-              Text(
-                'Analysis History',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.history, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppStrings.analysisHistory,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_analysisHistory.length} recent analysis',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          SizedBox(height: 8),
-          Text(
-            '${_analysisHistory.length} recent analyses',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
-              fontSize: 14,
+          const SizedBox(height: 10),
+          Container(
+            height: 2,
+            width: 60,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withOpacity(0.8),
+                  Colors.transparent,
+                ],
+              ),
             ),
           ),
         ],
@@ -201,10 +273,10 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
   Widget _buildHistoryList() {
     return RefreshIndicator(
       onRefresh: _loadHistory,
-      backgroundColor: AppColors.deepBlue,
+      backgroundColor: AppColors.primaryBlue,
       color: Colors.white,
       child: ListView.builder(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         itemCount: _analysisHistory.length,
         itemBuilder: (context, index) {
           final analysis = _analysisHistory[index];
@@ -215,139 +287,168 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
   }
 
   Widget _buildHistoryCard(Map<String, dynamic> analysis) {
-    final confidence = (analysis['confidence'] * 100).toInt();
+    final confidence = (analysis['confidence'] is double
+        ? analysis['confidence']
+        : double.parse(analysis['confidence'].toString())) *
+        100;
+    final confidenceInt = confidence.toInt();
+    final algaeType = analysis['algaeType'] ?? 'Unknown';
 
-    return Dismissible(
-      key: Key(analysis['id']),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        decoration: BoxDecoration(
-          color: Colors.red,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        alignment: Alignment.centerRight,
-        padding: EdgeInsets.only(right: 20),
-        child: Icon(Icons.delete, color: Colors.white, size: 30),
-      ),
-      confirmDismiss: (direction) async {
-        return await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('Delete Analysis?'),
-            content: Text('This analysis will be permanently removed.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text('Delete', style: TextStyle(color: Colors.red)),
-              ),
-            ],
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.95),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            spreadRadius: 2,
           ),
-        );
-      },
-      onDismissed: (direction) => _deleteAnalysis(analysis['id']),
-      child: Container(
-        margin: EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.95),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _viewAnalysisDetails(analysis),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              spreadRadius: 2,
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _viewAnalysisDetails(analysis),
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          analysis['algaeType'],
-                          style: TextStyle(
-                            color: AppColors.deepBlue,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _getConfidenceColor(confidence),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '$confidence%',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.calendar_today, size: 14, color: AppColors.greyText),
-                      SizedBox(width: 4),
-                      Text(
-                        '${analysis['date']} at ${analysis['time']}',
+                      child: const Icon(Icons.science,
+                          color: AppColors.primaryBlue, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        algaeType,
                         style: TextStyle(
-                          color: AppColors.greyText,
+                          color: AppColors.primaryBlue,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => _deleteAnalysis(analysis['id']),
+                      icon: Icon(Icons.delete_outline,
+                          color: AppColors.errorRed.withOpacity(0.7), size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Container(
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getConfidenceColor(confidenceInt),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$confidenceInt%',
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _viewAnalysisDetails(analysis),
-                          icon: Icon(Icons.visibility, size: 16),
-                          label: Text('View'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.deepBlue,
-                            side: BorderSide(color: AppColors.deepBlue),
-                            padding: EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    const SizedBox(width: 10),
+                    Icon(Icons.calendar_today,
+                        size: 14, color: AppColors.textSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${analysis['date']} - ${analysis['time']}',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (analysis['isToxic'] == true)
+                      Container(
+                        padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.toxicRed.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppColors.toxicRed, width: 1),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.warning,
+                                size: 12, color: AppColors.toxicRed),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppStrings.toxic,
+                              style: TextStyle(
+                                color: AppColors.toxicRed,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _viewAnalysisDetails(analysis),
+                        icon: const Icon(Icons.visibility, size: 18),
+                        label: const Text(AppStrings.viewDetails),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                       ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => _generatePDF(analysis),
-                          icon: Icon(Icons.picture_as_pdf, size: 16),
-                          label: Text('PDF'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.seaGreen,
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                          ),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton.icon(
+                      onPressed: () => _generatePDF(analysis),
+                      icon: const Icon(Icons.picture_as_pdf, size: 18),
+                      label: const Text('PDF'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accentGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
@@ -360,14 +461,15 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
+          const CircularProgressIndicator(
             color: Colors.white,
+            strokeWidth: 3,
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 20),
           Text(
-            'Loading History...',
+            'Loading history...',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withOpacity(0.9),
               fontSize: 16,
             ),
           ),
@@ -378,40 +480,55 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.analytics_outlined,
-            size: 64,
-            color: Colors.white.withOpacity(0.5),
-          ),
-          SizedBox(height: 16),
-          Text(
-            'No Analysis History',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+      child: Padding(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.analytics_outlined,
+              size: 80,
+              color: Colors.white.withOpacity(0.4),
             ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Your recent analyses will appear here',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
-              fontSize: 14,
+            const SizedBox(height: 20),
+            Text(
+              AppStrings.noHistory,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            const SizedBox(height: 10),
+            Text(
+              'Your recent analyses will appear here',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.add_photo_alternate),
+              label: const Text(AppStrings.startNewAnalysis),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.primaryBlue,
+                padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildFooter() {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         border: Border(
@@ -424,14 +541,22 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
       child: Row(
         children: [
           Expanded(
-            child: OutlinedButton(
+            child: OutlinedButton.icon(
               onPressed: _analysisHistory.isEmpty ? null : _clearAllHistory,
+              icon: const Icon(Icons.delete_sweep, size: 20),
+              label: const Text(ButtonStrings.clear),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
                 side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              child: Text('Clear All'),
             ),
+          ),
+          const SizedBox(width: 12),
+          IconButton(
+            onPressed: () => _loadHistory(),
+            icon: const Icon(Icons.refresh, color: Colors.white, size: 24),
+            tooltip: AppStrings.refresh,
           ),
         ],
       ),
@@ -439,8 +564,8 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
   }
 
   Color _getConfidenceColor(int confidence) {
-    if (confidence >= 90) return Colors.green;
-    if (confidence >= 70) return Colors.orange;
-    return Colors.red;
+    if (confidence >= 90) return AppColors.confidenceHigh;
+    if (confidence >= 70) return AppColors.confidenceMedium;
+    return AppColors.confidenceLow;
   }
 }

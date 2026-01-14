@@ -1,5 +1,5 @@
 name: bioalga
-description: "A new Flutter project."
+description: "BioAlga - Marine Algae Classification App"
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -14,15 +14,14 @@ dependencies:
   image_picker: ^1.2.0
   shared_preferences: ^2.5.3
   http: ^1.1.0
-  camera: ^0.10.5
   path_provider: ^2.1.5
   path: ^1.8.3
-  tflite_flutter: ^0.12.1
-  image: ^4.5.4
   printing: ^5.14.2
   pdf: ^3.11.3
   open_file: ^3.5.10
   intl: ^0.20.2
+  bidi: ^2.0.13
+  mime: ^1.0.6  # ✅ جديد: لفحص أنواع الملفات
 
 dev_dependencies:
   flutter_test:
@@ -35,8 +34,14 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/models/
     - assets/images/App_Logo.png
+    - assets/fonts/Cairo-Regular.ttf
+    # ✅ تم حذف assets/models/ لأننا لا نستخدم النموذج المحلي
+
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo-Regular.ttf
 
 flutter_native_splash:
   color: "#FFFFFF"
@@ -54,3 +59,20 @@ flutter_launcher_icons:
   image_path: "assets/images/App_Logo.png"
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/images/App_Logo.png"
+
+android:
+  buildTypes:
+    release:
+      manifestPlaceholders:
+        usesCleartextTraffic: false
+    debug:
+      manifestPlaceholders:
+        usesCleartextTraffic: true
+  compileSdkVersion: 34
+  minSdkVersion: 21
+  targetSdkVersion: 34
+
+ios:
+  deploymentTarget: '13.0'
+  usesSwiftPackageManager: true
+  supportsSwiftPackageManagerXCFrameworks: true

@@ -1,8 +1,12 @@
-Spirulina
-Chlorella
-Nori
-Kelp
-Diatoms
-Green Algae
-Red Algae
-Brown Algae
+Anabaena
+Aphanizomenon
+Gymnodinium
+Karennia
+Microcysic
+Noctiluca
+Nodularia
+Nontoxic
+Nostoc
+Oscillatoria
+Prorocentrum
+Skeletonema

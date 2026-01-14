@@ -8,16 +8,13 @@ class HistoryService {
   factory HistoryService() => _instance;
   HistoryService._internal();
 
-  // حفظ تحليل جديد
   static Future<void> saveAnalysis(Map<String, dynamic> analysis) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final history = await getAnalysisHistory();
 
-      // إضافة تحليل جديد في البداية
       history.insert(0, analysis);
 
-      // تحديد العدد الأقصى للسجلات
       if (history.length > AppConstants.maxHistoryItems) {
         history.removeLast();
       }
@@ -30,7 +27,6 @@ class HistoryService {
     }
   }
 
-  // جلب كل التاريخ
   static Future<List<Map<String, dynamic>>> getAnalysisHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -47,7 +43,6 @@ class HistoryService {
     return [];
   }
 
-  // حذف تحليل معين
   static Future<void> deleteAnalysis(String id) async {
     try {
       final history = await getAnalysisHistory();
@@ -61,7 +56,6 @@ class HistoryService {
     }
   }
 
-  // مسح كل التاريخ
   static Future<void> clearAllHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -71,7 +65,6 @@ class HistoryService {
     }
   }
 
-  // إنشاء ID فريد لكل تحليل
   static String generateId() {
     return DateTime.now().millisecondsSinceEpoch.toString();
   }

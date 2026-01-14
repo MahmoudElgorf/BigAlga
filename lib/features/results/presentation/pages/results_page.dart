@@ -1,22 +1,25 @@
 import 'dart:io';
+import 'package:bioalga/core/constants/constants.dart';
 import 'package:intl/intl.dart';
-import 'package:bioalga/features/results/presentation/widgets/algae_info.dart';
-import 'package:bioalga/features/results/presentation/widgets/result_card.dart';
 import 'package:flutter/material.dart';
-import '../../../../core/constants/constants.dart';
 import '../../../../core/services/ml_service.dart';
 import '../../../../core/services/pdf_service.dart';
 import '../../../../core/services/history_service.dart';
-import '../../../../shared/widgets/widgets.dart';
+import '../../../../shared/widgets/custom_app_bar.dart';
+import '../../../../shared/widgets/gradient_background.dart';
+import '../../../../shared/widgets/loading_indicator.dart';
+import '../../../../data/models/algae_model.dart';
+import '../widgets/algae_info.dart';
+import '../widgets/result_card.dart';
 
 class ResultsPage extends StatefulWidget {
   final File imageFile;
-  final Map<String, dynamic>? preloadedResults;
+  final AlgaeResult? result;
 
   const ResultsPage({
     Key? key,
     required this.imageFile,
-    this.preloadedResults,
+    this.result,
   }) : super(key: key);
 
   @override
@@ -24,7 +27,7 @@ class ResultsPage extends StatefulWidget {
 }
 
 class _ResultsPageState extends State<ResultsPage> {
-  Map<String, dynamic>? _results;
+  AlgaeResult? _result;
   bool _isLoading = true;
   String _error = '';
   bool _isGeneratingPDF = false;
@@ -32,80 +35,93 @@ class _ResultsPageState extends State<ResultsPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.preloadedResults != null) {
-      // استخدام البيانات المسبقة إذا وجدت
-      setState(() {
-        _results = widget.preloadedResults;
-        _isLoading = false;
-      });
+
+    if (widget.result != null) {
+      _initializeWithPreloadedResult();
     } else {
-      // تحليل الصورة الجديدة
       _analyzeImage();
+    }
+  }
+
+  void _initializeWithPreloadedResult() {
+    setState(() {
+      _result = widget.result;
+      _isLoading = false;
+    });
+
+    if (_result != null) {
+      _saveAnalysisToHistory(_result!);
     }
   }
 
   Future<void> _analyzeImage() async {
     try {
-      final results = await MLService.classifyImage(widget.imageFile);
+      final mlService = MLService();
+      final result = await mlService.classifyImage(widget.imageFile);
+
       setState(() {
-        _results = results;
+        _result = result;
         _isLoading = false;
       });
 
-      if (results != null) { // ⬅️ التحقق من أن results ليست null
-        await _saveAnalysisToHistory(results);
-      }
+      await _saveAnalysisToHistory(result);
+
     } catch (e) {
       setState(() {
-        _error = 'Failed To Analyze Image: $e';
+        _error = '${AppStrings.failedToAnalyze}: ${e.toString()}';
         _isLoading = false;
       });
     }
   }
 
-  Future<void> _saveAnalysisToHistory(Map<String, dynamic> results) async {
+  Future<void> _saveAnalysisToHistory(AlgaeResult result) async {
     try {
-      if (results['topPrediction'] != null) {
-        final analysisData = {
-          'id': HistoryService.generateId(),
-          'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-          'time': DateFormat('HH:mm').format(DateTime.now()),
-          'algaeType': results['topPrediction']['label'] ?? 'Unknown',
-          'confidence': results['topPrediction']['confidence'] ?? 0.0,
-          'imagePath': widget.imageFile.path,
-          'results': results,
-        };
+      final analysisData = {
+        'id': HistoryService.generateId(),
+        'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        'time': DateFormat('HH:mm').format(DateTime.now()),
+        'algaeType': result.name,
+        'scientificName': result.scientificName,
+        'confidence': result.confidence,
+        'confidenceLevel': result.confidenceLevel,
+        'isToxic': result.isToxic,
+        'imagePath': widget.imageFile.path,
+        'benefits': result.benefits,
+        'uses': result.uses,
+      };
 
-        await HistoryService.saveAnalysis(analysisData);
-      }
+      await HistoryService.saveAnalysis(analysisData);
+
     } catch (e) {
       print('Error saving analysis to history: $e');
-      // لا نعرض خطأ للمستخدم لأن هذه وظيفة ثانوية
     }
   }
 
   Future<void> _generatePDF() async {
-    if (_results == null) return;
+    if (_result == null) return;
 
     setState(() {
       _isGeneratingPDF = true;
     });
 
     try {
-      await PDFService.generateAndSaveReport(_results!, widget.imageFile);
+      await PDFService.generateAndSaveReport(
+        imageFile: widget.imageFile,
+        result: _result!,
+      );
 
-      // رسالة نجاح
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('PDF saved successfully to Downloads folder'),
-          backgroundColor: AppColors.seaGreen,
+          content: Text(SuccessStrings.pdfSaved),
+          backgroundColor: AppColors.successGreen,
         ),
       );
     } catch (e) {
+      print('❌ Error generating PDF: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to save PDF: $e'),
-          backgroundColor: AppColors.coral,
+          content: Text(ErrorStrings.pdfSaveFailed),
+          backgroundColor: AppColors.errorRed,
         ),
       );
     } finally {
@@ -115,26 +131,12 @@ class _ResultsPageState extends State<ResultsPage> {
     }
   }
 
-  void _navigateBackToHome() {
-    Navigator.of(context).popUntil((route) => route.isFirst);
-  }
-
-  void _analyzeNewImage() {
-    Navigator.pop(context);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(
-        title: AppText.results,
-        actions: _results != null ? [
-          IconButton(
-            icon: Icon(Icons.home, color: Colors.white),
-            onPressed: _navigateBackToHome,
-            tooltip: 'Back to Home',
-          ),
-        ] : null,
+        title: AppStrings.resultsTitle,
+        actions: _result != null ? [] : null,
       ),
       body: GradientBackground(
         child: _isLoading
@@ -147,7 +149,7 @@ class _ResultsPageState extends State<ResultsPage> {
   }
 
   Widget _buildLoading() {
-    return LoadingIndicator(message: AppText.analyzing);
+    return LoadingIndicator(message: AppStrings.analyzing);
   }
 
   Widget _buildError() {
@@ -160,14 +162,14 @@ class _ResultsPageState extends State<ResultsPage> {
             Icon(
               Icons.error_outline,
               size: 64,
-              color: AppColors.coral,
+              color: AppColors.errorRed,
             ),
             const SizedBox(height: 20),
             Text(
               _error,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: AppColors.darkText,
+                color: AppColors.textPrimary,
                 fontSize: 16,
               ),
             ),
@@ -178,20 +180,21 @@ class _ResultsPageState extends State<ResultsPage> {
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.deepBlue,
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    backgroundColor: AppColors.primaryBlue,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   ),
-                  child: Text('Try Again'),
+                  child: const Text(ButtonStrings.retry),
                 ),
                 const SizedBox(width: 16),
                 OutlinedButton(
-                  onPressed: _navigateBackToHome,
+                  onPressed: () => Navigator.popUntil(
+                      context, (route) => route.isFirst),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.deepBlue,
-                    side: BorderSide(color: AppColors.deepBlue),
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    foregroundColor: AppColors.primaryBlue,
+                    side: BorderSide(color: AppColors.primaryBlue),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   ),
-                  child: Text('Back to Home'),
+                  child: const Text(AppStrings.backToHome),
                 ),
               ],
             ),
@@ -202,8 +205,12 @@ class _ResultsPageState extends State<ResultsPage> {
   }
 
   Widget _buildResults() {
-    final topPrediction = _results?['topPrediction'] ?? {'label': 'Analysis in progress', 'confidence': 0.0};
-    final isConfident = _results?['isConfident'] ?? false;
+    if (_result == null) {
+      return _buildError();
+    }
+
+    final result = _result!;
+    final isConfident = result.confidence >= 0.7;
 
     return Column(
       children: [
@@ -215,51 +222,114 @@ class _ResultsPageState extends State<ResultsPage> {
                 _buildImagePreview(),
                 const SizedBox(height: 30),
 
-                ResultCard(results: topPrediction),
+                ResultCard(
+                  name: result.name,
+                  scientificName: result.scientificName,
+                  confidence: result.confidence,
+                  confidenceLevel: result.confidenceLevel,
+                  isToxic: result.isToxic,
+                  toxicityWarning: result.toxicityWarning,
+                ),
                 const SizedBox(height: 20),
 
-                AlgaeInfo(algaeType: topPrediction['label']),
+                AlgaeInfo(
+                  algaeType: result.name,
+                  benefits: result.benefits,
+                  uses: result.uses,
+                ),
                 const SizedBox(height: 20),
 
-                _buildConfidenceIndicator(isConfident),
+                _buildConfidenceIndicator(isConfident, result.confidence),
                 const SizedBox(height: 20),
+
               ],
             ),
           ),
         ),
 
-        // زر الحفظ في الأسفل
         _buildActionButtons(),
       ],
     );
   }
 
-  Widget _buildConfidenceIndicator(bool isConfident) {
+  Widget _buildConfidenceIndicator(bool isConfident, double confidence) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isConfident ? Colors.green.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
+        color: isConfident
+            ? AppColors.successGreen.withOpacity(0.1)
+            : AppColors.warningOrange.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isConfident ? Colors.green : Colors.orange,
+          color: isConfident ? AppColors.successGreen : AppColors.warningOrange,
+          width: 1.5,
         ),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isConfident ? Icons.verified : Icons.warning_amber,
+                color: isConfident ? AppColors.successGreen : AppColors.warningOrange,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                isConfident ? 'High Confidence Result' : 'Medium Confidence Result',
+                style: TextStyle(
+                  color: isConfident ? AppColors.successGreen : AppColors.warningOrange,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Confidence Level: ${(confidence * 100).toStringAsFixed(1)}%',
+            style: TextStyle(
+              color: AppColors.darkText.withOpacity(0.9),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isConfident
+                ? '✓ Result is reliable and can be trusted'
+                : '️Consider verifying with additional samples',
+            style: TextStyle(
+              color: AppColors.darkText.withOpacity(0.8),
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildInfoRow(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Icon(
-            isConfident ? Icons.verified : Icons.warning_amber,
-            color: isConfident ? Colors.green : Colors.orange,
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: Text(
-              isConfident
-                  ? 'High confidence analysis - Results are reliable'
-                  : 'Moderate confidence - Consider verifying with additional samples',
+              title,
               style: TextStyle(
-                color: Colors.white,
+                color: AppColors.textWhite.withOpacity(0.7),
                 fontSize: 14,
               ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: AppColors.textWhite.withOpacity(0.9),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -271,26 +341,48 @@ class _ResultsPageState extends State<ResultsPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: AppColors.textWhite.withOpacity(0.05),
         border: Border(
           top: BorderSide(
-            color: Colors.white.withOpacity(0.1),
+            color: AppColors.textWhite.withOpacity(0.1),
             width: 1,
           ),
         ),
       ),
       child: Column(
         children: [
-          // زر حفظ PDF
           _buildPrintButton(),
           const SizedBox(height: 12),
+
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.lightGreen,
+              side: BorderSide(color: AppColors.lightGreen),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.arrow_back, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  AppStrings.analyzeNewImage,
+                  style: TextStyle(fontSize: 16),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildPrintButton() {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: _isGeneratingPDF ? null : _generatePDF,
@@ -300,21 +392,21 @@ class _ResultsPageState extends State<ResultsPage> {
           height: 20,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.textWhite),
           ),
         )
-            : Icon(Icons.save_alt, color: Colors.white),
+            : const Icon(Icons.save_alt, color: AppColors.textWhite),
         label: Text(
-          _isGeneratingPDF ? 'Saving PDF...' : 'Save PDF Report',
-          style: TextStyle(
+          _isGeneratingPDF ? AppStrings.savingPDF : AppStrings.savePDFReport,
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: AppColors.textWhite,
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.deepBlue,
-          padding: EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          backgroundColor: AppColors.primaryBlue,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -330,7 +422,7 @@ class _ResultsPageState extends State<ResultsPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.deepBlue.withOpacity(0.2),
+            color: AppColors.primaryBlue.withOpacity(0.2),
             blurRadius: 15,
             spreadRadius: 2,
           ),
@@ -357,7 +449,6 @@ class _ResultsPageState extends State<ResultsPage> {
                 );
               },
             ),
-            // Overlay للمظهر الأفضل
             Container(
               height: 250,
               decoration: BoxDecoration(
@@ -368,6 +459,25 @@ class _ResultsPageState extends State<ResultsPage> {
                     Colors.transparent,
                     Colors.black.withOpacity(0.3),
                   ],
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 16,
+              left: 16,
+              child: Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  AppStrings.originalImage,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ),

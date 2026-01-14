@@ -7,7 +7,7 @@ lib/
 │   │   └── utils.dart
 │   └── services/
 │       ├── ml_service.dart
-│       └── pdf_service.dart          # ⬅️ جديد
+│       └── pdf_service.dart       
 ├── features/
 │   ├── home/
 │   │   └── presentation/
@@ -26,9 +26,8 @@ lib/
 │           │   └── pages.dart
 │           └── widgets/
 │               ├── results_widgets.dart
-│               ├── result_card.dart
-│               ├── algae_info.dart
-│               └── pdf_button.dart     
+│               ├── result_card.dart 
+│               └── algae_info.dart     
 ├── shared/
 │   ├── widgets/
 │   │   ├── widgets.dart

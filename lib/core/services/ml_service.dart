@@ -1,27 +1,138 @@
 import 'dart:io';
-import '../constants/constants.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:mime/mime.dart';
+import '../../data/models/algae_model.dart';
 
 class MLService {
-  static Future<Map<String, dynamic>?> classifyImage(File image) async {
-    // محاكاة وقت المعالجة
-    await Future.delayed(Duration(seconds: 2));
+  // ================= SINGLETON =================
+  static final MLService _instance = MLService._internal();
+  factory MLService() => _instance;
+  MLService._internal();
 
-    // بيانات وهمية للاختبار
-    return {
-      'topPrediction': {
-        'label': 'Spirulina',
-        'confidence': 0.92,
-      },
-      'allPredictions': [
-        {'label': 'Spirulina', 'confidence': 0.92},
-        {'label': 'Chlorella', 'confidence': 0.05},
-        {'label': 'Nori', 'confidence': 0.02},
-        {'label': 'Kelp', 'confidence': 0.01},
-      ],
-      'isConfident': true,
-    };
+  bool _isInitialized = false;
+  static const String _baseUrl = 'https://algea-image-classififcation.onrender.com';
+  static const String _predictEndpoint = '/predictApi';
+
+  // ================= INITIALIZE =================
+  Future<void> initModel() async {
+    if (_isInitialized) return;
+
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/'));
+      if (response.statusCode == 200) {
+        _isInitialized = true;
+        print('✅ API connected successfully');
+      } else {
+        throw Exception('Failed to connect to API');
+      }
+    } catch (e) {
+      throw Exception('API connection error: $e');
+    }
   }
 
-  static void dispose() {
+  // ================= CLASSIFY =================
+  Future<AlgaeResult> classifyImage(File imageFile) async {
+    if (!_isInitialized) {
+      await initModel();
+    }
+
+    try {
+      final startTime = DateTime.now();
+
+      // Create multipart request
+      final uri = Uri.parse('$_baseUrl$_predictEndpoint');
+      final request = http.MultipartRequest('POST', uri);
+
+      // Add image file
+      final stream = http.ByteStream(imageFile.openRead());
+      final length = await imageFile.length();
+      final multipartFile = http.MultipartFile(
+        'fileup',
+        stream,
+        length,
+        filename: imageFile.path.split('/').last,
+      );
+      request.files.add(multipartFile);
+
+      // Send request
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      final processingTime = DateTime.now().difference(startTime).inMilliseconds;
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+        if (responseData.containsKey('error')) {
+          throw Exception(responseData['error']);
+        }
+
+        // Parse API response
+        final predictionResponse = PredictionResponse.fromJson(responseData);
+
+        // Get algae data
+        final algaeName = predictionResponse.prediction;
+        final algaeInfo = algaeData[algaeName] ?? algaeData['nontoxic']!;
+
+        // Prepare all predictions
+        final allPredictions = [
+          {
+            'label': algaeName,
+            'confidence': predictionResponse.confidence,
+            'isToxic': algaeInfo['isToxic'],
+          }
+        ];
+
+        // Build AlgaeResult
+        return AlgaeResult(
+          name: algaeName,
+          scientificName: algaeInfo['scientificName'] as String? ?? '$algaeName spp.',
+          confidence: predictionResponse.confidence,
+          confidenceLevel: _confidenceLevel(predictionResponse.confidence),
+          benefits: (algaeInfo['benefits'] as List<dynamic>? ?? []).cast<String>().toList(),
+          uses: (algaeInfo['uses'] as List<dynamic>? ?? []).cast<String>().toList(),
+          allPredictions: allPredictions,
+          modelInfo: {
+            'processingTime': processingTime,
+            'apiUsed': true,
+            'endpoint': _predictEndpoint,
+          },
+          dateTime: DateTime.now(),
+          isToxic: algaeInfo['isToxic'] as bool? ?? false,
+          toxicityWarning: algaeInfo['toxicityWarning'] as String? ?? 'Information not available',
+        );      } else {
+        throw Exception('API request failed with status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error classifying image: $e');
+      rethrow;
+    }
+  }
+
+  // ================= HELPERS =================
+  String _confidenceLevel(double c) {
+    if (c >= 0.9) return 'Very High';
+    if (c >= 0.7) return 'High';
+    if (c >= 0.5) return 'Medium';
+    return 'Low';
+  }
+
+  // ================= DISPOSE =================
+  void dispose() {
+    _isInitialized = false;
+  }
+
+  // ================= TEST CONNECTION =================
+  Future<bool> testConnection() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/'),
+        headers: {'Content-Type': 'application/json'},
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
   }
 }
