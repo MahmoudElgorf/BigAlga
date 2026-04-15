@@ -1,23 +1,27 @@
+// lib/features/results/presentation/widgets/algae_info.dart
 import 'package:bioalga/core/constants/constants.dart';
+import 'package:bioalga/data/models/algae_model.dart';
 import 'package:flutter/material.dart';
 
 class AlgaeInfo extends StatelessWidget {
   final String algaeType;
-  final List<String>? benefits;
-  final List<String>? uses;
+  final AlgaeResult? fullResult; // New: receiving the full result from classification
 
   const AlgaeInfo({
     Key? key,
     required this.algaeType,
-    this.benefits,
-    this.uses,
+    this.fullResult,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final info = _getAlgaeInfo(algaeType);
-    final displayBenefits = benefits ?? info['benefits'] ?? _getDefaultBenefits(algaeType);
-    final displayUses = uses ?? info['uses'] ?? _getDefaultUses(algaeType);
+    // Use data from fullResult if available, otherwise use local data
+    final displayData = fullResult != null
+        ? _getInfoFromResult(fullResult!)
+        : _getLocalAlgaeInfo(algaeType);
+
+    final toxicityColor = fullResult?.toxicityColor ??
+        (displayData['isToxic'] == true ? Colors.red : Colors.green);
 
     return CustomPaint(
       painter: LeafShapePainter(),
@@ -52,34 +56,69 @@ class AlgaeInfo extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // header with Arabic name if available
             Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2E7D32).withOpacity(0.1),
+                    color: toxicityColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    shape: BoxShape.rectangle,
                   ),
-                  child: const Icon(
-                    Icons.eco,
-                    color: Color(0xFF2E7D32),
+                  child: Icon(
+                    fullResult?.isToxic == true ? Icons.warning_amber : Icons.eco,
+                    color: toxicityColor,
                     size: 24,
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  AppStrings.algaeInformation,
-                  style: Theme.of(context).textTheme.displayMedium!.copyWith(
-                    color: const Color(0xFF1B5E20),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (displayData['arabicName'] != null && displayData['arabicName'] != '')
+                        Text(
+                          displayData['arabicName'],
+                          style: Theme.of(context).textTheme.displayMedium!.copyWith(
+                            color: const Color(0xFF1B5E20),
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      Text(
+                        displayData['scientificName'] ?? AppStrings.algaeInformation,
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
+            // Confidence badge (if available)
+            if (fullResult != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _getConfidenceColor(fullResult!.confidence).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Confidence: ${(fullResult!.confidence * 100).toInt()}% (${fullResult!.confidenceLevel})',
+                  style: TextStyle(
+                    color: _getConfidenceColor(fullResult!.confidence),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 16),
             Container(
               height: 2,
               width: 80,
@@ -95,70 +134,343 @@ class AlgaeInfo extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
+            // ===== NEW: Scientific Warning (most important) =====
+            if (displayData['scientificWarning'] != null && displayData['scientificWarning'] != '')
+              _buildWarningItem(
+                Icons.science,
+                '! Scientific Warning',
+                displayData['scientificWarning'],
+                Colors.orange,
+              ),
+            const SizedBox(height: 16),
+
+            // ===== NEW: Toxicity Status with color =====
             _buildLeafVeinItem(
-              Icons.emoji_nature,
-              AppStrings.scientificName,
-              info['scientificName'] ?? AppStrings.notSpecified,
-              const Color(0xFF2E7D32),
+              fullResult?.isToxic == true ? Icons.warning : Icons.check_circle,
+              'Toxicity Status',
+              displayData['toxicityWarning'] ?? 'Under analysis',
+              toxicityColor,
             ),
             const SizedBox(height: 16),
 
-            _buildLeafVeinItem(
-              Icons.water_drop,
-              AppStrings.description,
-              info['description'] ?? 'Information being collected',
-              const Color(0xFF388E3C),
-            ),
+            // ===== NEW: Potential Toxins =====
+            if (displayData['potentialToxins'] != null && (displayData['potentialToxins'] as List).isNotEmpty)
+              _buildMultiLineLeafVeinItem(
+                Icons.warning,
+                '! Potential Toxins',
+                List<String>.from(displayData['potentialToxins']),
+                Colors.red.shade400,
+              ),
             const SizedBox(height: 16),
 
-            if (displayBenefits.isNotEmpty) ...[
+            // Category
+            if (displayData['category'] != null && displayData['category'] != '')
+              _buildLeafVeinItem(
+                Icons.category,
+                'Classification',
+                displayData['category'],
+                const Color(0xFF2E7D32),
+              ),
+            const SizedBox(height: 16),
+
+            // ===== NEW: CO2 per Kg =====
+            if (displayData['co2PerKg'] != null)
+              _buildLeafVeinItem(
+                Icons.cloud,
+                'CO2 Sequestration',
+                displayData['co2PerKg'] > 0
+                    ? '~ ${displayData['co2PerKg']} kg CO2 per kg dry biomass'
+                    : 'Not applicable (heterotrophic organism)',
+                const Color(0xFF0288D1),
+              ),
+            const SizedBox(height: 16),
+
+            // ===== NEW: Sellable Status =====
+            if (displayData['sellable'] != null && displayData['sellable'] != '')
+              _buildLeafVeinItem(
+                Icons.shopping_cart,
+                'Commercial Viability',
+                displayData['sellable'],
+                _getSellableColor(displayData['sellable']),
+              ),
+            const SizedBox(height: 16),
+
+            // Benefits
+            if (displayData['benefits'] != null && (displayData['benefits'] as List).isNotEmpty)
               _buildMultiLineLeafVeinItem(
                 Icons.medical_services,
                 AppStrings.benefits,
-                displayBenefits,
+                List<String>.from(displayData['benefits']),
                 const Color(0xFF2E7D32),
               ),
-              const SizedBox(height: 16),
-            ],
+            const SizedBox(height: 16),
 
-            if (displayUses.isNotEmpty) ...[
+            // Uses
+            if (displayData['uses'] != null && (displayData['uses'] as List).isNotEmpty)
               _buildMultiLineLeafVeinItem(
                 Icons.build,
                 AppStrings.applications,
-                displayUses,
+                List<String>.from(displayData['uses']),
                 const Color(0xFF4CAF50),
               ),
-              const SizedBox(height: 16),
-            ],
-
-            _buildLeafVeinItem(
-              Icons.visibility,
-              AppStrings.characteristics,
-              info['characteristics'] ?? 'Characteristics being analyzed',
-              const Color(0xFF4CAF50),
-            ),
             const SizedBox(height: 16),
 
-            _buildLeafVeinItem(
-              Icons.warning,
-              AppStrings.toxicityLevel,
-              info['toxicity'] ?? 'Toxicity being analyzed',
-              const Color(0xFF8BC34A),
-            ),
+            // Habitat
+            if (displayData['habitat'] != null && displayData['habitat'] != '')
+              _buildLeafVeinItem(
+                Icons.location_on,
+                AppStrings.habitat,
+                displayData['habitat'],
+                const Color(0xFF2E7D32),
+              ),
             const SizedBox(height: 16),
-
-            _buildLeafVeinItem(
-              Icons.location_on,
-              AppStrings.habitat,
-              info['habitat'] ?? 'Habitat information being updated',
-              const Color(0xFF2E7D32),
-            ),
 
             _buildApiSourceBadge(),
           ],
         ),
       ),
     );
+  }
+
+  // Convert AlgaeResult to Map for display
+  Map<String, dynamic> _getInfoFromResult(AlgaeResult result) {
+    return {
+      'scientificName': result.scientificName,
+      'arabicName': result.arabicName,
+      'category': result.category,
+      'isToxic': result.isToxic,
+      'toxicityWarning': result.toxicityWarning,
+      'scientificWarning': result.scientificWarning,
+      'potentialToxins': result.potentialToxins,
+      'co2PerKg': result.co2PerKg,
+      'sellable': result.sellable,
+      'benefits': result.benefits,
+      'uses': result.uses,
+      'habitat': _getHabitatForType(result.name),
+    };
+  }
+
+  // Local data (fallback if fullResult is not available)
+  Map<String, dynamic> _getLocalAlgaeInfo(String type) {
+    final localData = _getAlgaeDataMap();
+    return localData[type] ?? localData['default']!;
+  }
+
+  Map<String, dynamic> _getAlgaeDataMap() {
+    return {
+      'Anabaena': {
+        'scientificName': 'Anabaena spp. (or Dolichospermum)',
+        'arabicName': 'Anabaena',
+        'category': 'Cyanobacteria',
+        'isToxic': false,
+        'toxicityWarning': '! Toxin production depends on species/strain',
+        'scientificWarning': 'Most planktonic Anabaena are now reclassified as Dolichospermum. Toxicity varies significantly between species and strains.',
+        'potentialToxins': ['Anatoxin-a (neurotoxin) - in some strains'],
+        'co2PerKg': 1.83,
+        'sellable': 'Conditional - Only as controlled culture (Azolla-Anabaena)',
+        'benefits': ['Atmospheric nitrogen fixation', 'Improves soil fertility'],
+        'uses': ['Biofertilizers', 'Scientific research'],
+        'habitat': 'Freshwater lakes, ponds, slow-moving rivers',
+      },
+      'Aphanizomenon': {
+        'scientificName': 'Aphanizomenon spp.',
+        'arabicName': 'Aphanizomenon',
+        'category': 'Cyanobacteria',
+        'isToxic': false,
+        'toxicityWarning': '! Some strains produce toxins, others do not',
+        'scientificWarning': 'Some strains produce saxitoxins or cylindrospermopsin. Commercial products risk Microcystis contamination.',
+        'potentialToxins': ['Saxitoxins', 'Cylindrospermopsin'],
+        'co2PerKg': 1.83,
+        'sellable': 'No - High regulatory risk',
+        'benefits': ['Nitrogen fixation', 'Ecological role'],
+        'uses': ['Scientific research', 'Water quality monitoring'],
+        'habitat': 'Nutrient-rich freshwater systems',
+      },
+      'Microcystis': {
+        'scientificName': 'Microcystis spp.',
+        'arabicName': 'Microcystis',
+        'category': 'Cyanobacteria',
+        'isToxic': true,
+        'toxicityWarning': '! DANGER: Produces dangerous hepatotoxins',
+        'scientificWarning': 'Produces microcystins (liver toxins). WHO guideline: 1 microgram/L in drinking water.',
+        'potentialToxins': ['Microcystins (hepatotoxins)'],
+        'co2PerKg': 1.83,
+        'sellable': 'No - Not suitable for commercial sale',
+        'benefits': ['Research only'],
+        'uses': ['Scientific research', 'Environmental monitoring'],
+        'habitat': 'Nutrient-rich freshwater lakes',
+      },
+      'Karenia': {
+        'scientificName': 'Karenia spp.',
+        'arabicName': 'Karenia',
+        'category': 'Dinoflagellate',
+        'isToxic': true,
+        'toxicityWarning': '! DANGER: Produces Brevetoxins',
+        'scientificWarning': 'Produces brevetoxins causing Neurotoxic Shellfish Poisoning and respiratory irritation.',
+        'potentialToxins': ['Brevetoxins (neurotoxins)'],
+        'co2PerKg': 1.83,
+        'sellable': 'No - Highly toxic',
+        'benefits': ['Environmental monitoring'],
+        'uses': ['Research', 'Red tide monitoring'],
+        'habitat': 'Coastal marine waters',
+      },
+      'Nodularia': {
+        'scientificName': 'Nodularia spp.',
+        'arabicName': 'Nodularia',
+        'category': 'Cyanobacteria',
+        'isToxic': true,
+        'toxicityWarning': '! Produces Nodularin',
+        'scientificWarning': 'Produces nodularin (hepatotoxin). Common in brackish waters like the Baltic Sea.',
+        'potentialToxins': ['Nodularin (hepatotoxin)'],
+        'co2PerKg': 1.83,
+        'sellable': 'No - Research only',
+        'benefits': ['Nitrogen fixation'],
+        'uses': ['Scientific research', 'Toxin monitoring'],
+        'habitat': 'Brackish waters, estuaries',
+      },
+      'Nostoc': {
+        'scientificName': 'Nostoc spp.',
+        'arabicName': 'Nostoc',
+        'category': 'Cyanobacteria',
+        'isToxic': false,
+        'toxicityWarning': '! Generally safe for known edible species',
+        'scientificWarning': 'Some strains can produce toxins. Traditional edible species have long safety history.',
+        'potentialToxins': ['Microcystins (in some strains)'],
+        'co2PerKg': 1.83,
+        'sellable': 'Conditional - Only defined non-toxic strains',
+        'benefits': ['Nitrogen fixation', 'Soil improvement', 'Protein source'],
+        'uses': ['Biofertilizers', 'Traditional food'],
+        'habitat': 'Freshwater and terrestrial environments',
+      },
+      'Oscillatoria': {
+        'scientificName': 'Oscillatoria spp.',
+        'arabicName': 'Oscillatoria',
+        'category': 'Cyanobacteria',
+        'isToxic': false,
+        'toxicityWarning': '! Some strains produce toxins',
+        'scientificWarning': 'Some strains produce anatoxin-a or microcystins. Not for food/agriculture without testing.',
+        'potentialToxins': ['Anatoxin-a', 'Microcystins', 'Aplysiatoxins'],
+        'co2PerKg': 1.83,
+        'sellable': 'No - Research only',
+        'benefits': ['Water pollution indicator'],
+        'uses': ['Environmental monitoring'],
+        'habitat': 'Freshwater, wastewater systems',
+      },
+      'Gymnodinium': {
+        'scientificName': 'Gymnodinium spp.',
+        'arabicName': 'Gymnodinium',
+        'category': 'Dinoflagellate',
+        'isToxic': false,
+        'toxicityWarning': '! Some species produce toxins',
+        'scientificWarning': 'Gymnodinium catenatum produces saxitoxins (PSP). Not all species are toxic.',
+        'potentialToxins': ['Saxitoxins - in some species'],
+        'co2PerKg': 1.83,
+        'sellable': 'No - Monitoring only',
+        'benefits': ['Part of marine food web'],
+        'uses': ['Research', 'Shellfish monitoring'],
+        'habitat': 'Marine and brackish waters',
+      },
+      'Prorocentrum': {
+        'scientificName': 'Prorocentrum spp.',
+        'arabicName': 'Prorocentrum',
+        'category': 'Dinoflagellate',
+        'isToxic': false,
+        'toxicityWarning': '! Some species cause DSP',
+        'scientificWarning': 'Some species produce okadaic acid causing Diarrhetic Shellfish Poisoning.',
+        'potentialToxins': ['Okadaic acid', 'Dinophysistoxins'],
+        'co2PerKg': 1.83,
+        'sellable': 'No - Monitoring only',
+        'benefits': ['Marine ecology studies'],
+        'uses': ['Research', 'Shellfish monitoring'],
+        'habitat': 'Coastal marine waters, coral reefs',
+      },
+      'Noctiluca': {
+        'scientificName': 'Noctiluca scintillans',
+        'arabicName': 'Noctiluca',
+        'category': 'Dinoflagellate (heterotrophic)',
+        'isToxic': false,
+        'toxicityWarning': '! Blooms can cause hypoxia',
+        'scientificWarning': 'Heterotrophic - does NOT fix CO2 like photosynthetic organisms. Blooms can cause fish kills.',
+        'potentialToxins': ['No human toxins', 'Environmental: hypoxia'],
+        'co2PerKg': 0.0,
+        'sellable': 'No - Valued for ecotourism only',
+        'benefits': ['Bioluminescence', 'Ecotourism'],
+        'uses': ['Research', 'Ecotourism', 'Education'],
+        'habitat': 'Coastal marine waters',
+      },
+      'Skeletonema': {
+        'scientificName': 'Skeletonema spp.',
+        'arabicName': 'Skeletonema',
+        'category': 'Diatom',
+        'isToxic': false,
+        'toxicityWarning': '- Generally safe',
+        'scientificWarning': 'Not known to produce human toxins. Excellent for aquaculture.',
+        'potentialToxins': ['None known'],
+        'co2PerKg': 1.83,
+        'sellable': 'Yes - Excellent for aquaculture',
+        'benefits': ['Rich in fatty acids', 'Live feed for larvae'],
+        'uses': ['Aquaculture hatcheries', 'Research'],
+        'habitat': 'Coastal and oceanic waters',
+      },
+      'nontoxic': {
+        'scientificName': 'Non-toxic Algae (general)',
+        'arabicName': 'Non-toxic algae',
+        'category': 'General category',
+        'isToxic': false,
+        'toxicityWarning': '- Environmentally safe',
+        'scientificWarning': 'Requires species identification and toxin testing per batch.',
+        'potentialToxins': ['Test for: Microcystins, Nodularin, Anatoxin-a, Saxitoxins'],
+        'co2PerKg': 1.83,
+        'sellable': 'Conditional - Requires testing',
+        'benefits': ['Oxygen production', 'Ecological balance'],
+        'uses': ['Hydroponics', 'Research'],
+        'habitat': 'Various aquatic environments',
+      },
+      'default': {
+        'scientificName': 'Classification in progress',
+        'arabicName': 'Classification in progress',
+        'category': 'Unknown',
+        'isToxic': false,
+        'toxicityWarning': 'Toxicity assessment ongoing',
+        'scientificWarning': 'Scientific analysis underway for accurate identification.',
+        'potentialToxins': ['Analysis pending'],
+        'co2PerKg': 1.83,
+        'sellable': 'Unknown - Requires identification',
+        'benefits': ['Information being updated'],
+        'uses': ['Information being updated'],
+        'habitat': 'Analysis ongoing',
+      },
+    };
+  }
+
+  String _getHabitatForType(String type) {
+    final habitats = {
+      'Anabaena': 'Freshwater lakes, ponds, slow-moving rivers',
+      'Aphanizomenon': 'Nutrient-rich freshwater systems, lakes',
+      'Gymnodinium': 'Marine and brackish waters worldwide',
+      'Karenia': 'Coastal marine waters, warm temperate regions',
+      'Microcystis': 'Nutrient-rich freshwater lakes, reservoirs',
+      'Noctiluca': 'Coastal marine waters worldwide',
+      'Nodularia': 'Brackish waters, estuaries, Baltic Sea',
+      'Nostoc': 'Freshwater and terrestrial environments',
+      'Oscillatoria': 'Freshwater, wastewater systems',
+      'Prorocentrum': 'Coastal marine waters, coral reefs',
+      'Skeletonema': 'Coastal and oceanic waters',
+      'nontoxic': 'Various aquatic environments',
+    };
+    return habitats[type] ?? 'Analysis ongoing';
+  }
+
+  Color _getConfidenceColor(double confidence) {
+    if (confidence >= 0.8) return const Color(0xFF2E7D32);
+    if (confidence >= 0.6) return const Color(0xFFFF9800);
+    return const Color(0xFFF44336);
+  }
+
+  Color _getSellableColor(String sellable) {
+    if (sellable.contains('Yes')) return const Color(0xFF2E7D32);
+    if (sellable.contains('No')) return const Color(0xFFF44336);
+    return const Color(0xFFFF9800);
   }
 
   Widget _buildLeafVeinItem(IconData icon, String title, String value, Color color) {
@@ -181,11 +493,7 @@ class AlgaeInfo extends StatelessWidget {
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 18,
-            ),
+            child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -198,7 +506,6 @@ class AlgaeInfo extends StatelessWidget {
                     color: const Color(0xFF1B5E20),
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
-                    letterSpacing: 0.5,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -208,7 +515,58 @@ class AlgaeInfo extends StatelessWidget {
                     color: const Color(0xFF424242),
                     fontSize: 14,
                     height: 1.5,
-                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWarningItem(IconData icon, String title, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: const Color(0xFF424242),
+                    fontSize: 13,
+                    height: 1.5,
                   ),
                 ),
               ],
@@ -239,11 +597,7 @@ class AlgaeInfo extends StatelessWidget {
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 18,
-            ),
+            child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -256,7 +610,6 @@ class AlgaeInfo extends StatelessWidget {
                     color: const Color(0xFF1B5E20),
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
-                    letterSpacing: 0.5,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -264,14 +617,14 @@ class AlgaeInfo extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: items.map((item) {
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.only(bottom: 6),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
-                            Icons.check_circle,
+                            title.contains('!') ? Icons.warning : Icons.check_circle,
                             size: 14,
-                            color: color,
+                            color: title.contains('!') ? Colors.orange : color,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
@@ -279,8 +632,8 @@ class AlgaeInfo extends StatelessWidget {
                               item,
                               style: TextStyle(
                                 color: const Color(0xFF424242),
-                                fontSize: 14,
-                                height: 1.5,
+                                fontSize: 13,
+                                height: 1.4,
                               ),
                             ),
                           ),
@@ -330,274 +683,6 @@ class AlgaeInfo extends StatelessWidget {
       ),
     );
   }
-
-  List<String> _getDefaultBenefits(String type) {
-    final benefitsData = {
-      'Anabaena': [
-        'Atmospheric nitrogen fixation',
-        'Improves soil fertility',
-        'Production of bioactive compounds',
-        'Source of essential amino acids',
-      ],
-      'Aphanizomenon': [
-        'Rich source of phycocyanin',
-        'Strong antioxidant properties',
-        'Supports immune system health',
-        'Food source for marine organisms',
-      ],
-      'Gymnodinium': [
-        'Vital part of marine food chain',
-        'Oxygen production through photosynthesis',
-        'Supports marine biodiversity',
-      ],
-      'Karenia': [
-        'Environmental indicator for climate changes',
-        'Study of red tide phenomena',
-        'Harmful algal bloom research',
-      ],
-      'Microcystis': [
-        'Study of environmental changes in freshwater',
-        'Water quality and lake monitoring',
-        'Aquatic toxicity research',
-      ],
-      'Noctiluca': [
-        'Distinctive bioluminescence phenomenon',
-        'Attracts ecotourism and scientific tourism',
-        'Indicator of high water fertility',
-      ],
-      'Nodularia': [
-        'Nitrogen fixation in aquatic environments',
-        'Production of active chemical compounds',
-        'Environmental studies in lakes',
-      ],
-      'Nostoc': [
-        'Atmospheric nitrogen fixation',
-        'Improves agricultural soil fertility',
-        'Traditional food source in some cultures',
-      ],
-      'Oscillatoria': [
-        'Sensitive indicator of water pollution',
-        'Aquatic ecology studies',
-        'Production of natural pigments',
-      ],
-      'Prorocentrum': [
-        'Part of marine phytoplankton',
-        'Supports marine biodiversity',
-        'Food source for small fish',
-      ],
-      'Skeletonema': [
-        'Main food source for mollusks and shellfish',
-        'Accurate indicator of ecosystem health',
-        'Research on marine food chains',
-      ],
-      'nontoxic': [
-        'Safe for human and animal use',
-        'Suitable for educational and laboratory purposes',
-        'Does not pose environmental risk',
-      ],
-    };
-
-    return benefitsData[type] ?? [
-      'Marine food source',
-      'Oxygen production',
-      'Supports marine ecosystem',
-    ];
-  }
-
-  List<String> _getDefaultUses(String type) {
-    final usesData = {
-      'Anabaena': [
-        'Soil fertilization in agriculture',
-        'Biological nitrogen fixation research',
-        'Biofertilizer production',
-      ],
-      'Aphanizomenon': [
-        'Dietary supplements rich in antioxidants',
-        'Medical and therapeutic research',
-        'Aquatic environment monitoring',
-      ],
-      'Gymnodinium': [
-        'Marine environment monitoring',
-        'Scientific research on plankton',
-        'Red tide phenomenon study',
-      ],
-      'Karenia': [
-        'Early warning of red tide phenomena',
-        'Coastal monitoring and fishery protection',
-        'Algal toxicity research',
-      ],
-      'Microcystis': [
-        'Freshwater pollution monitoring',
-        'Early warning of harmful algal blooms',
-        'Water treatment research',
-      ],
-      'Noctiluca': [
-        'Ecotourism and scientific tourism',
-        'Bioluminescence studies',
-        'Bays and coastal areas monitoring',
-      ],
-      'Nodularia': [
-        'Freshwater and lake monitoring',
-        'Aquatic ecology research',
-        'Climate change studies',
-      ],
-      'Nostoc': [
-        'Sustainable and organic agriculture',
-        'Biofertilizers',
-        'Traditional and folk medicine',
-      ],
-      'Oscillatoria': [
-        'Environmental pollution monitoring',
-        'Wastewater treatment',
-        'Metal bioaccumulation research',
-      ],
-      'Prorocentrum': [
-        'Fish feed for aquaculture',
-        'Marine environment monitoring',
-        'Marine microbiology research',
-      ],
-      'Skeletonema': [
-        'Shellfish feeding and aquaculture',
-        'Marine water fertility monitoring',
-        'Aquaculture research',
-      ],
-      'nontoxic': [
-        'Educational purposes in schools and universities',
-        'Safe laboratory experiments',
-        'Scientific gardens and research centers',
-      ],
-    };
-
-    return usesData[type] ?? [
-      'Scientific research',
-      'Environmental monitoring',
-      'Educational purposes',
-    ];
-  }
-
-  Map<String, dynamic> _getAlgaeInfo(String type) {
-    final algaeData = {
-      'Anabaena': {
-        'scientificName': 'Anabaena spp.',
-        'description': 'Filamentous blue-green algae known for forming specialized cells called heterocysts for nitrogen fixation.',
-        'characteristics': 'Filamentous, forms chains of cells, capable of nitrogen fixation, produces specialized heterocyst cells.',
-        'toxicity': 'Can produce neurotoxins (anatoxins) and hepatotoxins. Toxic blooms require monitoring.',
-        'habitat': 'Freshwater lakes, ponds, slow-moving rivers. Forms surface blooms in nutrient-rich waters.',
-        'benefits': _getDefaultBenefits('Anabaena'),
-        'uses': _getDefaultUses('Anabaena'),
-      },
-      'Aphanizomenon': {
-        'scientificName': 'Aphanizomenon spp.',
-        'description': 'Filamentous algae forming straight or slightly curved filaments, often forming dense surface layers.',
-        'characteristics': 'Forms bundles or packets of filaments, gas vesicles for buoyancy, straight filamentous structure.',
-        'toxicity': 'Can produce neurotoxins (saxitoxins) and cytotoxins. Some strains are toxic to animals and humans.',
-        'habitat': 'Nutrient-rich freshwater systems, lakes, reservoirs. Prefers calm, nutrient-rich waters.',
-        'benefits': _getDefaultBenefits('Aphanizomenon'),
-        'uses': _getDefaultUses('Aphanizomenon'),
-      },
-      'Gymnodinium': {
-        'scientificName': 'Gymnodinium spp.',
-        'description': 'Unarmored dinoflagellate characterized by distinctive swimming behavior and diverse ecological roles.',
-        'characteristics': 'Naked cells without protective plates, two flagella for movement, mixotrophic capabilities.',
-        'toxicity': 'Some species produce potent neurotoxins. Can cause harmful algal blooms (red tide).',
-        'habitat': 'Marine and brackish waters worldwide. Coastal and oceanic environments.',
-        'benefits': _getDefaultBenefits('Gymnodinium'),
-        'uses': _getDefaultUses('Gymnodinium'),
-      },
-      'Karenia': {
-        'scientificName': 'Karenia spp.',
-        'description': 'Genus of unarmored dinoflagellates including species responsible for major red tide events.',
-        'characteristics': 'Golden-brown color, unarmored, photosynthetic, forms dense surface aggregations.',
-        'toxicity': 'Produces brevetoxins affecting the nervous system. Causes fish kills and respiratory irritation.',
-        'habitat': 'Coastal marine waters, especially in warm temperate to tropical regions.',
-        'benefits': _getDefaultBenefits('Karenia'),
-        'uses': _getDefaultUses('Karenia'),
-      },
-      'Microcystis': {
-        'scientificName': 'Microcystis spp.',
-        'description': 'Filamentous algae forming irregularly shaped colonies with gas vesicles for buoyancy control.',
-        'characteristics': 'Forms spherical or irregular colonies, cells embedded in gelatinous matrix, gas vesicles present.',
-        'toxicity': 'Produces microcystins - potent hepatotoxins. Major concern for drinking water safety.',
-        'habitat': 'Nutrient-rich freshwater lakes, reservoirs worldwide. Thrives in warm, nutrient-rich conditions.',
-        'benefits': _getDefaultBenefits('Microcystis'),
-        'uses': _getDefaultUses('Microcystis'),
-      },
-      'Noctiluca': {
-        'scientificName': 'Noctiluca scintillans',
-        'description': 'Large bioluminescent dinoflagellate known for creating stunning "sea sparkle" displays at night.',
-        'characteristics': 'Large spherical cells (up to 2mm), bioluminescent, phagotrophic feeding on other plankton.',
-        'toxicity': 'Generally non-toxic but can cause ecological disturbances through massive bloom formation.',
-        'habitat': 'Coastal marine waters worldwide. Often forms red or green tides in nutrient-rich areas.',
-        'benefits': _getDefaultBenefits('Noctiluca'),
-        'uses': _getDefaultUses('Noctiluca'),
-      },
-      'Nodularia': {
-        'scientificName': 'Nodularia spp.',
-        'description': 'Filamentous algae with barrel-shaped cells and specialized cells for nitrogen fixation.',
-        'characteristics': 'Straight filaments, barrel-shaped cells, forms heterocysts, gas vesicles for buoyancy.',
-        'toxicity': 'Produces nodularin, a potent hepatotoxin similar to microcystin. Toxic to liver tissues.',
-        'habitat': 'Brackish waters, estuaries, Baltic Sea. Tolerant of varying salinity conditions.',
-        'benefits': _getDefaultBenefits('Nodularia'),
-        'uses': _getDefaultUses('Nodularia'),
-      },
-      'Nostoc': {
-        'scientificName': 'Nostoc spp.',
-        'description': 'Filamentous algae forming gelatinous colonies, capable of nitrogen fixation in specialized cells.',
-        'characteristics': 'Forms gelatinous colonies, bead-on-string appearance, heterocysts for nitrogen fixation.',
-        'toxicity': 'Generally non-toxic. Some strains may produce minor toxins but not typically harmful.',
-        'habitat': 'Diverse habitats including freshwater, terrestrial environments, and symbiotic relationships.',
-        'benefits': _getDefaultBenefits('Nostoc'),
-        'uses': _getDefaultUses('Nostoc'),
-      },
-      'Oscillatoria': {
-        'scientificName': 'Oscillatoria spp.',
-        'description': 'Filamentous algae showing oscillating movement, forming dense mats in aquatic systems.',
-        'characteristics': 'Long straight filaments, gliding movement, forms surface layers and benthic mats.',
-        'toxicity': 'Some species produce microcystins and other toxins. Toxicity varies between strains.',
-        'habitat': 'Freshwater systems, wastewater treatment plants, benthic areas of lakes and rivers.',
-        'benefits': _getDefaultBenefits('Oscillatoria'),
-        'uses': _getDefaultUses('Oscillatoria'),
-      },
-      'Prorocentrum': {
-        'scientificName': 'Prorocentrum spp.',
-        'description': 'Armored dinoflagellate with distinctive valvate structure, important in marine plankton communities.',
-        'characteristics': 'Protective shell plates, flagellar insertion, photosynthetic, some species mixotrophic.',
-        'toxicity': 'Some species produce okadaic acid causing diarrhetic shellfish poisoning (DSP).',
-        'habitat': 'Coastal marine waters, coral reefs, mangrove systems worldwide.',
-        'benefits': _getDefaultBenefits('Prorocentrum'),
-        'uses': _getDefaultUses('Prorocentrum'),
-      },
-      'Skeletonema': {
-        'scientificName': 'Skeletonema spp.',
-        'description': 'Centric diatom forming long chains connected by marginal processes, important in marine food webs.',
-        'characteristics': 'Forms long chains, cylindrical cells, marginal linking processes, silica skeleton.',
-        'toxicity': 'Non-toxic. Important primary producer supporting marine food webs.',
-        'habitat': 'Coastal and oceanic waters worldwide. Often dominates spring plankton blooms.',
-        'benefits': _getDefaultBenefits('Skeletonema'),
-        'uses': _getDefaultUses('Skeletonema'),
-      },
-      'nontoxic': {
-        'scientificName': 'Non-toxic Algae Species',
-        'description': 'This algae sample has been classified as non-toxic based on current analysis methods.',
-        'characteristics': 'Safe for aquatic ecosystems, does not produce harmful toxins, supports healthy food webs.',
-        'toxicity': 'Non-toxic - safe for environment and human contact',
-        'habitat': 'Various aquatic environments including freshwater, marine, and brackish systems.',
-        'benefits': _getDefaultBenefits('nontoxic'),
-        'uses': _getDefaultUses('nontoxic'),
-      },
-      'default': {
-        'scientificName': 'Classification in progress',
-        'description': 'Scientific analysis and microscopic examination underway for accurate species identification.',
-        'characteristics': 'Detailed morphological and genetic analysis in progress for comprehensive characterization.',
-        'toxicity': 'Toxicity assessment ongoing using advanced detection methods and bioassays.',
-        'habitat': 'Ecological habitat analysis and environmental preferences being studied.',
-        'benefits': ['Benefits information being updated from database'],
-        'uses': ['Uses information being updated from database'],
-      },
-    };
-
-    return algaeData[type] ?? algaeData['default']!;
-  }
 }
 
 class LeafShapePainter extends CustomPainter {
@@ -608,7 +693,6 @@ class LeafShapePainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     final path = Path();
-
     path.moveTo(size.width * 0.1, size.height * 0.3);
     path.quadraticBezierTo(size.width * 0.05, size.height * 0.1, size.width * 0.2, size.height * 0.05);
     path.quadraticBezierTo(size.width * 0.4, 0, size.width * 0.6, size.height * 0.02);

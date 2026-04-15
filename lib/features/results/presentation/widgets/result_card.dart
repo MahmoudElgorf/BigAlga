@@ -377,7 +377,7 @@ class ResultCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '⚠️ Avoid human or animal consumption',
+                  'Avoid human or animal consumption',
                   style: TextStyle(
                     color: AppColors.toxicRed.withOpacity(0.8),
                     fontSize: 12,

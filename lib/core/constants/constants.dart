@@ -64,6 +64,7 @@ class AppColorsPDF {
   static const PdfColor secondaryBlue = PdfColor.fromInt(0xFF0081A7);
   static const PdfColor accentGreen = PdfColor.fromInt(0xFF00AFB9);
   static const PdfColor lightGreen = PdfColor.fromInt(0xFF00C9B1);
+  static const PdfColor warningOrange = PdfColor.fromInt(0xFFFF9800);
 
   // Background colors
   static const PdfColor backgroundLight = PdfColor.fromInt(0xFFFDFCDC);
@@ -282,7 +283,7 @@ class AppStrings {
   static const String veryLow = 'Very Low';
 
   // API Messages
-  static const String apiPowered = 'AI API Powered Analysis';
+  static const String apiPowered = 'BioAlga AI Powered Analysis';
   static const String remoteAnalysis = 'Remote AI Analysis';
   static const String cloudBasedModel = 'Cloud-based AI model for enhanced accuracy';
 

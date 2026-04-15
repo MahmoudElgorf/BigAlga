@@ -1,12 +1,16 @@
+// lib/features/home/presentation/pages/home_page.dart
 import 'dart:io';
+import 'package:bioalga/about/presentation/pages/about_screen.dart';
 import 'package:bioalga/core/constants/constants.dart';
 import 'package:bioalga/core/utils/utils.dart';
+import 'package:bioalga/data/models/algae_model.dart';
 import 'package:bioalga/shared/widgets/wave_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/services/ml_service.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../results/presentation/pages/results_page.dart';
+import '../../../catalog/presentation/pages/algae_catalog_screen.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/history_drawer.dart';
 
@@ -58,7 +62,6 @@ class _HomePageState extends State<HomePage> {
           return Stack(
             children: [
               const Positioned.fill(child: AnimatedBackground()),
-
               Positioned.fill(
                 child: SingleChildScrollView(
                   child: Column(
@@ -72,7 +75,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-
               if (_isLoading) _buildLoadingOverlay(),
             ],
           );
@@ -182,7 +184,6 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
   Widget _buildHeaderWaves() {
     return Positioned(
       bottom: 0,
@@ -200,7 +201,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildDecorativeWave() {
     return Container(
       height: 4,
-      width: 100,
+      width: 80,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -221,9 +222,93 @@ class _HomePageState extends State<HomePage> {
           _buildFloatingCard(context),
           const SizedBox(height: 30),
           _buildActionButton(context),
+          const SizedBox(height: 16),
+          _buildEncyclopediaButton(),
           const SizedBox(height: 20),
           _buildModelStatus(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEncyclopediaButton() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primaryBlue,
+            AppColors.secondaryBlue,
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryBlue.withOpacity(0.3),
+            blurRadius: 15,
+            spreadRadius: 2,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AlgaeCatalogScreen(),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.menu_book,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Algae Encyclopedia',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Explore ${algaeData.length} documented species',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -309,9 +394,9 @@ class _HomePageState extends State<HomePage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(
                   color: Colors.orange,
                   shape: BoxShape.circle,
                 ),
@@ -321,17 +406,17 @@ class _HomePageState extends State<HomePage> {
                 AppStrings.testingConnection,
                 style: TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 14,
+                  fontSize: 13,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 4),
           Text(
             AppStrings.connectionMayTakeTime,
             style: TextStyle(
               color: AppColors.textSecondary.withOpacity(0.7),
-              fontSize: 12,
+              fontSize: 11,
             ),
           ),
         ],
@@ -344,9 +429,9 @@ class _HomePageState extends State<HomePage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(
                   color: Colors.red,
                   shape: BoxShape.circle,
                 ),
@@ -356,12 +441,12 @@ class _HomePageState extends State<HomePage> {
                 AppStrings.serviceUnavailable,
                 style: TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 14,
+                  fontSize: 13,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 4),
           TextButton(
             onPressed: _initializeModel,
             child: Text(
@@ -384,12 +469,37 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         children: [
           _buildFooterWaves(),
-          const SizedBox(height: 10),
-          Text(
-            AppStrings.poweredBy,
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
+          const SizedBox(height: 12),
+
+          // ✅ حقوق الملكية (قابلة للنقر - تفتح About)
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AboutScreen(),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primaryBlue.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.primaryBlue.withOpacity(0.15),
+                  width: 0.5,
+                ),
+              ),
+              child: Text(
+                'BioAlga © ${DateTime.now().year}',
+                style: TextStyle(
+                  color: AppColors.primaryBlue.withOpacity(0.7),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.5,
+                ),
+              ),
             ),
           ),
         ],
@@ -491,31 +601,13 @@ class _HomePageState extends State<HomePage> {
       if (fileSize > AppSizes.maxFileSize) {
         return false;
       }
-
       if (!await imageFile.exists()) {
         return false;
       }
-
       return true;
     } catch (e) {
       return false;
     }
-  }
-
-  void _showImageQualityError(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Image quality not suitable'),
-        content: Text(AppStrings.imageQualityInstructions),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _processImageAndNavigate(

@@ -1,3 +1,4 @@
+// lib/features/results/presentation/pages/results_page.dart
 import 'dart:io';
 import 'package:bioalga/core/constants/constants.dart';
 import 'package:intl/intl.dart';
@@ -82,9 +83,16 @@ class _ResultsPageState extends State<ResultsPage> {
         'time': DateFormat('HH:mm').format(DateTime.now()),
         'algaeType': result.name,
         'scientificName': result.scientificName,
+        'arabicName': result.arabicName,
         'confidence': result.confidence,
         'confidenceLevel': result.confidenceLevel,
         'isToxic': result.isToxic,
+        'toxicityWarning': result.toxicityWarning,
+        'scientificWarning': result.scientificWarning,
+        'category': result.category,
+        'potentialToxins': result.potentialToxins,
+        'co2PerKg': result.co2PerKg,
+        'sellable': result.sellable,
         'imagePath': widget.imageFile.path,
         'benefits': result.benefits,
         'uses': result.uses,
@@ -117,7 +125,7 @@ class _ResultsPageState extends State<ResultsPage> {
         ),
       );
     } catch (e) {
-      print('❌ Error generating PDF: $e');
+      print('Error generating PDF: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(ErrorStrings.pdfSaveFailed),
@@ -222,6 +230,7 @@ class _ResultsPageState extends State<ResultsPage> {
                 _buildImagePreview(),
                 const SizedBox(height: 30),
 
+                // ResultCard مع البيانات المحدثة
                 ResultCard(
                   name: result.name,
                   scientificName: result.scientificName,
@@ -232,16 +241,20 @@ class _ResultsPageState extends State<ResultsPage> {
                 ),
                 const SizedBox(height: 20),
 
+                // AlgaeInfo المعدل - يمرر fullResult بالكامل
                 AlgaeInfo(
                   algaeType: result.name,
-                  benefits: result.benefits,
-                  uses: result.uses,
+                  fullResult: result,  // ✅ تمرير النتيجة الكاملة
                 ),
                 const SizedBox(height: 20),
 
                 _buildConfidenceIndicator(isConfident, result.confidence),
                 const SizedBox(height: 20),
 
+                // إضافة مؤشر صلاحية البيع (إن أمكن)
+                if (result.sellable.isNotEmpty && result.sellable != 'Unknown')
+                  _buildSellableIndicator(result.sellable),
+                const SizedBox(height: 10),
               ],
             ),
           ),
@@ -298,7 +311,7 @@ class _ResultsPageState extends State<ResultsPage> {
           Text(
             isConfident
                 ? '✓ Result is reliable and can be trusted'
-                : '️Consider verifying with additional samples',
+                : '⚠️ Consider verifying with additional samples',
             style: TextStyle(
               color: AppColors.darkText.withOpacity(0.8),
               fontSize: 13,
@@ -309,6 +322,50 @@ class _ResultsPageState extends State<ResultsPage> {
     );
   }
 
+  Widget _buildSellableIndicator(String sellable) {
+    Color color;
+    IconData icon;
+    String message;
+
+    if (sellable.contains('نعم') || sellable.contains('Yes') || sellable == 'نعم') {
+      color = AppColors.successGreen;
+      icon = Icons.check_circle;
+      message = '✓ هذا النوع صالح للبيع التجاري';
+    } else if (sellable.contains('لا') || sellable.contains('No') || sellable == 'لا') {
+      color = AppColors.errorRed;
+      icon = Icons.cancel;
+      message = '✗ هذا النوع غير صالح للبيع التجاري';
+    } else {
+      color = AppColors.warningOrange;
+      icon = Icons.warning_amber;
+      message = '⚠️ هذا النوع صالح للبيع بشروط (راجع التحذير العلمي)';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3), width: 1),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildInfoRow(String title, String value) {
     return Padding(
