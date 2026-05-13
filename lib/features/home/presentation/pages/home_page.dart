@@ -1,6 +1,6 @@
 // lib/features/home/presentation/pages/home_page.dart
 import 'dart:io';
-import 'package:bioalga/about/presentation/pages/about_screen.dart';
+import 'package:bioalga/features/about/presentation/pages/about_screen.dart';
 import 'package:bioalga/core/constants/constants.dart';
 import 'package:bioalga/core/utils/utils.dart';
 import 'package:bioalga/data/models/algae_model.dart';
@@ -67,9 +67,8 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     children: [
                       _buildHeader(context),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 20),
                       _buildMainContent(context),
-                      const SizedBox(height: 40),
                       _buildFooter(),
                     ],
                   ),
@@ -220,11 +219,10 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         children: [
           _buildFloatingCard(context),
-          const SizedBox(height: 30),
+          const SizedBox(height: 16),
           _buildActionButton(context),
           const SizedBox(height: 16),
           _buildEncyclopediaButton(),
-          const SizedBox(height: 20),
           _buildModelStatus(),
         ],
       ),
@@ -312,58 +310,71 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
   Widget _buildFloatingCard(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeOut,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryBlue.withOpacity(0.1),
-            blurRadius: 30,
-            spreadRadius: 5,
-            offset: const Offset(0, 10),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.95),
+            borderRadius: BorderRadius.circular(25),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryBlue.withOpacity(0.1),
+                blurRadius: 30,
+                spreadRadius: 5,
+                offset: const Offset(0, 10),
+              ),
+            ],
+            border: Border.all(
+              color: Colors.white.withOpacity(0.5),
+              width: 1,
+            ),
           ),
-        ],
-        border: Border.all(
-          color: Colors.white.withOpacity(0.5),
-          width: 1,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 30),
+              Text(
+                AppStrings.scientificAnalysis,
+                style: Theme.of(context).textTheme.displayMedium!.copyWith(
+                  color: AppColors.primaryBlue,
+                  fontSize: 22,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${AppStrings.uploadInstructions}\n'
+                    '${AppStrings.accurateClassification}\n'
+                    '${AppStrings.detailedInfo}\n'
+                    '${AppStrings.aiAnalysis}',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 15,
+                  height: 1.6,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.science,
-            size: 50,
-            color: AppColors.primaryBlue,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            AppStrings.scientificAnalysis,
-            style: Theme.of(context).textTheme.displayMedium!.copyWith(
-              color: AppColors.primaryBlue,
-              fontSize: 22,
+
+        Positioned(
+          top: -25,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Image.asset(
+              'assets/images/App_Logo.png',
+              width: 150,
+              height: 150,
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            '${AppStrings.uploadInstructions}\n'
-                '${AppStrings.accurateClassification}\n'
-                '${AppStrings.detailedInfo}\n'
-                '${AppStrings.aiAnalysis}',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 15,
-              height: 1.6,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -469,9 +480,7 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         children: [
           _buildFooterWaves(),
-          const SizedBox(height: 12),
 
-          // ✅ حقوق الملكية (قابلة للنقر - تفتح About)
           GestureDetector(
             onTap: () {
               Navigator.push(

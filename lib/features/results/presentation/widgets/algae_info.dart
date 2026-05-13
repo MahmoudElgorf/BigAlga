@@ -56,7 +56,6 @@ class AlgaeInfo extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // header with Arabic name if available
             Row(
               children: [
                 Container(
@@ -76,17 +75,20 @@ class AlgaeInfo extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (displayData['arabicName'] != null && displayData['arabicName'] != '')
-                        Text(
-                          displayData['arabicName'],
-                          style: Theme.of(context).textTheme.displayMedium!.copyWith(
-                            color: const Color(0xFF1B5E20),
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
                       Text(
-                        displayData['scientificName'] ?? AppStrings.algaeInformation,
+                        fullResult?.name ??
+                            displayData['name']?.toString() ??
+                            AppStrings.algaeInformation,
+                        style: Theme.of(context).textTheme.displayMedium!.copyWith(
+                          color: const Color(0xFF1B5E20),
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        displayData['scientificName']?.toString() ??
+                            AppStrings.algaeInformation,
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 14,
@@ -98,72 +100,39 @@ class AlgaeInfo extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-
-            // Confidence badge (if available)
-            if (fullResult != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _getConfidenceColor(fullResult!.confidence).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'Confidence: ${(fullResult!.confidence * 100).toInt()}% (${fullResult!.confidenceLevel})',
-                  style: TextStyle(
-                    color: _getConfidenceColor(fullResult!.confidence),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 16),
-            Container(
-              height: 2,
-              width: 80,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF4CAF50).withOpacity(0.6),
-                    const Color(0xFF8BC34A).withOpacity(0.6),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
             const SizedBox(height: 20),
 
-            // ===== NEW: Scientific Warning (most important) =====
-            if (displayData['scientificWarning'] != null && displayData['scientificWarning'] != '')
+            if (displayData['scientificWarning'] != null &&
+                displayData['scientificWarning'] != '')
               _buildWarningItem(
                 Icons.science,
-                '! Scientific Warning',
+                'Scientific Warning',
                 displayData['scientificWarning'],
                 Colors.orange,
               ),
+
             const SizedBox(height: 16),
 
-            // ===== NEW: Toxicity Status with color =====
             _buildLeafVeinItem(
               fullResult?.isToxic == true ? Icons.warning : Icons.check_circle,
               'Toxicity Status',
               displayData['toxicityWarning'] ?? 'Under analysis',
               toxicityColor,
             ),
+
             const SizedBox(height: 16),
 
-            // ===== NEW: Potential Toxins =====
-            if (displayData['potentialToxins'] != null && (displayData['potentialToxins'] as List).isNotEmpty)
+            if (displayData['potentialToxins'] != null &&
+                (displayData['potentialToxins'] as List).isNotEmpty)
               _buildMultiLineLeafVeinItem(
-                Icons.warning,
-                '! Potential Toxins',
+                Icons.biotech,
+                'Potential Toxins',
                 List<String>.from(displayData['potentialToxins']),
                 Colors.red.shade400,
               ),
+
             const SizedBox(height: 16),
 
-            // Category
             if (displayData['category'] != null && displayData['category'] != '')
               _buildLeafVeinItem(
                 Icons.category,
@@ -171,21 +140,21 @@ class AlgaeInfo extends StatelessWidget {
                 displayData['category'],
                 const Color(0xFF2E7D32),
               ),
+
             const SizedBox(height: 16),
 
-            // ===== NEW: CO2 per Kg =====
             if (displayData['co2PerKg'] != null)
               _buildLeafVeinItem(
                 Icons.cloud,
                 'CO2 Sequestration',
                 displayData['co2PerKg'] > 0
-                    ? '~ ${displayData['co2PerKg']} kg CO2 per kg dry biomass'
-                    : 'Not applicable (heterotrophic organism)',
+                    ? '${displayData['co2PerKg']} kg CO2 per kg dry biomass'
+                    : 'Not applicable for this organism',
                 const Color(0xFF0288D1),
               ),
+
             const SizedBox(height: 16),
 
-            // ===== NEW: Sellable Status =====
             if (displayData['sellable'] != null && displayData['sellable'] != '')
               _buildLeafVeinItem(
                 Icons.shopping_cart,
@@ -193,29 +162,31 @@ class AlgaeInfo extends StatelessWidget {
                 displayData['sellable'],
                 _getSellableColor(displayData['sellable']),
               ),
+
             const SizedBox(height: 16),
 
-            // Benefits
-            if (displayData['benefits'] != null && (displayData['benefits'] as List).isNotEmpty)
+            if (displayData['benefits'] != null &&
+                (displayData['benefits'] as List).isNotEmpty)
               _buildMultiLineLeafVeinItem(
                 Icons.medical_services,
                 AppStrings.benefits,
                 List<String>.from(displayData['benefits']),
                 const Color(0xFF2E7D32),
               ),
+
             const SizedBox(height: 16),
 
-            // Uses
-            if (displayData['uses'] != null && (displayData['uses'] as List).isNotEmpty)
+            if (displayData['uses'] != null &&
+                (displayData['uses'] as List).isNotEmpty)
               _buildMultiLineLeafVeinItem(
                 Icons.build,
                 AppStrings.applications,
                 List<String>.from(displayData['uses']),
                 const Color(0xFF4CAF50),
               ),
+
             const SizedBox(height: 16),
 
-            // Habitat
             if (displayData['habitat'] != null && displayData['habitat'] != '')
               _buildLeafVeinItem(
                 Icons.location_on,
@@ -223,12 +194,12 @@ class AlgaeInfo extends StatelessWidget {
                 displayData['habitat'],
                 const Color(0xFF2E7D32),
               ),
+
             const SizedBox(height: 16),
 
             _buildApiSourceBadge(),
           ],
-        ),
-      ),
+        ),      ),
     );
   }
 
@@ -236,7 +207,6 @@ class AlgaeInfo extends StatelessWidget {
   Map<String, dynamic> _getInfoFromResult(AlgaeResult result) {
     return {
       'scientificName': result.scientificName,
-      'arabicName': result.arabicName,
       'category': result.category,
       'isToxic': result.isToxic,
       'toxicityWarning': result.toxicityWarning,
@@ -347,7 +317,7 @@ class AlgaeInfo extends StatelessWidget {
         'arabicName': 'Oscillatoria',
         'category': 'Cyanobacteria',
         'isToxic': false,
-        'toxicityWarning': '! Some strains produce toxins',
+        'toxicityWarning': 'Some strains produce toxins',
         'scientificWarning': 'Some strains produce anatoxin-a or microcystins. Not for food/agriculture without testing.',
         'potentialToxins': ['Anatoxin-a', 'Microcystins', 'Aplysiatoxins'],
         'co2PerKg': 1.83,

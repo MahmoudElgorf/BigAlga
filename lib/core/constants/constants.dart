@@ -8,6 +8,7 @@ class AppColors {
   static const Color secondaryBlue = Color(0xFF0081A7);
   static const Color accentGreen = Color(0xFF00AFB9);
   static const Color lightGreen = Color(0xFF00C9B1);
+  static const Color primaryGreen = Color(0xFF2E7D32); // Added for AI Assistant
 
   // Background & Surface
   static const Color backgroundLight = Color(0xFFFDFCDC);
@@ -170,16 +171,37 @@ class AppAssets {
 
 // ==================== API CONSTANTS ====================
 class ApiConstants {
-  // API Configuration
-  static const String baseUrl = 'https://algea-image-classififcation.onrender.com';
+  // API Configuration - Production
+  static const String baseUrl = 'https://bioalga-llm.onrender.com';
+
+  static const String emulatorUrl = 'http://10.0.2.2:8000';
+
+  // Endpoints
+  static const String chat = '/chat/';
+  static const String chatTypes = '/chat/types';
+  static const String chatCompare = '/chat/compare';
+  static const String algaeInfo = '/algae/info';
+  static const String algaeToxicity = '/algae/toxicity/';
+  static const String enhanceResults = '/enhance/results';
+  static const String enhanceSummary = '/enhance/summary';
+  static const String health = '/health';
+
   static const String predictEndpoint = '/predictApi';
+
+  // Timeouts
   static const Duration timeout = Duration(seconds: 30);
+  static const Duration connectionTimeout = Duration(seconds: 30);
+  static const Duration readTimeout = Duration(seconds: 60);
+
+  // File limits
   static const int maxFileSize = 10 * 1024 * 1024; // 10MB
 
-  // API Headers
+  // Headers
+  static const String contentType = 'Content-Type';
+  static const String applicationJson = 'application/json';
   static const Map<String, String> headers = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    contentType: applicationJson,
+    'Accept': applicationJson,
   };
 }
 
@@ -193,6 +215,70 @@ class ApiVisuals {
   static const IconData analyzingIcon = Icons.cloud_upload;
   static const IconData serverIcon = Icons.dns;
   static const IconData networkIcon = Icons.network_check;
+
+  // Chat Assistant Icons
+  static const IconData assistantIcon = Icons.assistant;
+  static const IconData sendIcon = Icons.send;
+  static const IconData micIcon = Icons.mic;
+  static const IconData attachIcon = Icons.attach_file;
+  static const IconData toxicityIcon = Icons.warning_amber;
+  static const IconData healthIcon = Icons.medical_services;
+  static const IconData commercialIcon = Icons.shopping_cart;
+  static const IconData environmentIcon = Icons.cloud;
+  static const IconData scienceIcon = Icons.science;
+  static const IconData safetyIcon = Icons.tips_and_updates;
+}
+
+// ==================== CHAT ASSISTANT CONSTANTS ====================
+class ChatAssistantConstants {
+  // Max messages to keep in history
+  static const int maxHistoryMessages = 50;
+
+  // Typing indicator delay
+  static const Duration typingDelay = Duration(milliseconds: 500);
+
+  // Scroll behavior
+  static const Duration scrollDuration = Duration(milliseconds: 300);
+
+  // Question templates for quick access
+  static const List<Map<String, dynamic>> questionTemplates = [
+    {
+      'icon': Icons.warning_amber,
+      'title': 'Toxicity',
+      'question': 'Is this algae toxic? What are the dangers?',
+      'color': '#E53935',
+    },
+    {
+      'icon': Icons.medical_services,
+      'title': 'Health Effects',
+      'question': 'What are the health effects if exposed to this algae?',
+      'color': '#FF9800',
+    },
+    {
+      'icon': Icons.shopping_cart,
+      'title': 'Commercial Use',
+      'question': 'Can this algae be used commercially? Is it sellable?',
+      'color': '#4CAF50',
+    },
+    {
+      'icon': Icons.cloud,
+      'title': 'Environmental Impact',
+      'question': 'What is the environmental impact of this algae?',
+      'color': '#2196F3',
+    },
+    {
+      'icon': Icons.science,
+      'title': 'Scientific Info',
+      'question': 'Tell me more about the scientific classification of this algae.',
+      'color': '#9C27B0',
+    },
+    {
+      'icon': Icons.tips_and_updates,
+      'title': 'Safety Tips',
+      'question': 'How should I handle this algae safely?',
+      'color': '#00897B',
+    },
+  ];
 }
 
 // ==================== APP STRINGS ====================
@@ -230,6 +316,16 @@ class AppStrings {
   static const String confidenceIndicator = 'Confidence Indicator';
   static const String low = 'Low';
   static const String high = 'High';
+
+  // Chat Assistant Strings
+  static const String aiAssistant = 'AI Assistant';
+  static const String askAbout = 'Ask about';
+  static const String typeYourQuestion = 'Type your question...';
+  static const String aiSpecialist = 'I am your BioAlga AI Assistant';
+  static const String askMeAnything = 'Ask me anything about toxicity, applications, environmental impact, or safety';
+  static const String failedToGetResponse = 'Failed to get response. Please try again.';
+  static const String cannotAnswer = 'I can only answer questions related to algae.';
+  static const String analyzingQuestion = 'Analyzing your question...';
 
   // Error Messages
   static const String noImageSelected = 'No image selected';

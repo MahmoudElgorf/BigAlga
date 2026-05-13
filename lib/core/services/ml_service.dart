@@ -108,7 +108,6 @@ class MLService {
           potentialToxins: (algaeInfo['potentialToxins'] as List<dynamic>).cast<String>().toList(),
           co2PerKg: (algaeInfo['co2PerKg'] as num).toDouble(),
           sellable: algaeInfo['sellable'] as String,
-          arabicName: algaeInfo['arabicName'] as String,
         );
       } else {
         throw Exception('API request failed with status: ${response.statusCode}');
@@ -149,7 +148,6 @@ class MLService {
       potentialToxins: [],
       co2PerKg: 0.0,
       sellable: 'Unknown - requires analysis',
-      arabicName: 'غير معروف',
     );
   }
 

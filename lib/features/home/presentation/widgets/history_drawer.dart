@@ -5,33 +5,67 @@ import 'package:flutter/material.dart';
 import 'package:bioalga/core/services/pdf_service.dart';
 import 'package:bioalga/core/services/history_service.dart';
 import 'package:bioalga/features/results/presentation/pages/results_page.dart';
+import 'package:bioalga/features/results/presentation/pages/chat_assistant_screen.dart';
 import 'package:bioalga/data/models/algae_model.dart';
 
 class HistoryDrawer extends StatefulWidget {
+  const HistoryDrawer({Key? key}) : super(key: key);
+
   @override
   _HistoryDrawerState createState() => _HistoryDrawerState();
 }
 
 class _HistoryDrawerState extends State<HistoryDrawer> {
   List<Map<String, dynamic>> _analysisHistory = [];
+  List<Map<String, dynamic>> _chatHistory = [];
   bool _isLoading = true;
+
+  // Map for algae images
+  static const Map<String, String> _algaeImages = {
+    'Anabaena': 'assets/images/anabaena.png',
+    'Aphanizomenon': 'assets/images/aphanizomenon.png',
+    'Microcystis': 'assets/images/microcystis.png',
+    'Nodularia': 'assets/images/nodularia.png',
+    'Nostoc': 'assets/images/nostoc.png',
+    'Oscillatoria': 'assets/images/oscillatoria.png',
+    'Gymnodinium': 'assets/images/gymnodinium.png',
+    'Karenia': 'assets/images/karenia.png',
+    'Prorocentrum': 'assets/images/prorocentrum.png',
+    'Noctiluca': 'assets/images/noctiluca.png',
+    'Skeletonema': 'assets/images/Skeletonema.png',
+    'Nontoxic': 'assets/images/Nontoxic.png',
+  };
+
+  String _getAlgaeImagePath(String algaeType) {
+    // إذا كان Nontoxic، نعرض أيقونة خاصة بدون صورة
+    if (algaeType.toLowerCase() == 'nontoxic') {
+      return 'nontoxic_icon';
+    }
+
+    if (_algaeImages.containsKey(algaeType)) {
+      return _algaeImages[algaeType]!;
+    }
+    return 'assets/images/App_Logo.png';
+  }
 
   @override
   void initState() {
     super.initState();
-    _loadHistory();
+    _loadAllHistory();
   }
 
-  Future<void> _loadHistory() async {
+  Future<void> _loadAllHistory() async {
     setState(() => _isLoading = true);
     final history = await HistoryService.getAnalysisHistory();
+    final chats = await HistoryService.getChatHistory();
     setState(() {
       _analysisHistory = history;
+      _chatHistory = chats;
       _isLoading = false;
     });
   }
 
-  void _clearAllHistory() async {
+  Future<void> _clearAllHistory() async {
     final confirmed = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -55,7 +89,8 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
 
     if (confirmed == true) {
       await HistoryService.clearAllHistory();
-      await _loadHistory();
+      await HistoryService.clearAllChatHistory();
+      await _loadAllHistory();
       _showSnackBar('All history cleared', AppColors.successGreen);
     }
   }
@@ -71,14 +106,12 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
 
       _showSnackBar('PDF report generated successfully', AppColors.successGreen);
     } catch (e) {
-      print('❌ Error generating PDF from history: $e');
+      print('Error generating PDF from history: $e');
       _showSnackBar(ErrorStrings.pdfSaveFailed, AppColors.errorRed);
     }
   }
 
-  // دالة مساعدة لإنشاء AlgaeResult من بيانات التاريخ مع الحقول الجديدة
   AlgaeResult _createAlgaeResultFromHistory(Map<String, dynamic> analysis) {
-    // استخراج البيانات القديمة
     final name = analysis['algaeType'] ?? 'Unknown';
     final scientificName = analysis['scientificName'] ?? '$name spp.';
     final confidence = (analysis['confidence'] is double
@@ -94,8 +127,6 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
     final isToxic = analysis['isToxic'] ?? false;
     final toxicityWarning = analysis['toxicityWarning'] ??
         (isToxic ? AppStrings.handleWithCare : AppStrings.safe);
-
-    // البيانات الجديدة (مع قيم افتراضية إذا لم تكن موجودة في التاريخ القديم)
     final scientificWarning = analysis['scientificWarning'] ??
         'Toxicity depends on specific strain. Consult expert for verification.';
     final category = analysis['category'] ??
@@ -109,7 +140,6 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
     final co2PerKg = (analysis['co2PerKg'] ??
         (name == 'Noctiluca' ? 0.0 : 1.83)).toDouble();
     final sellable = analysis['sellable'] ?? _getDefaultSellable(name);
-    final arabicName = analysis['arabicName'] ?? _getDefaultArabicName(name);
 
     return AlgaeResult(
       name: name,
@@ -127,17 +157,14 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
       dateTime: DateTime.now(),
       isToxic: isToxic,
       toxicityWarning: toxicityWarning,
-      // الحقول الجديدة:
       scientificWarning: scientificWarning,
       category: category,
       potentialToxins: potentialToxins,
       co2PerKg: co2PerKg,
       sellable: sellable,
-      arabicName: arabicName,
     );
   }
 
-  // دوال مساعدة للقيم الافتراضية
   List<String> _getDefaultPotentialToxins(String name) {
     switch (name) {
       case 'Microcystis':
@@ -170,39 +197,22 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
   String _getDefaultSellable(String name) {
     switch (name) {
       case 'Skeletonema':
-        return 'نعم - Excellent for aquaculture';
+        return 'Yes - Excellent for aquaculture';
       case 'Nostoc':
-        return 'بشروط - Only defined non-toxic strains';
+        return 'Conditional - Only defined non-toxic strains';
       case 'Anabaena':
-        return 'بشروط - Only as controlled culture';
+        return 'Conditional - Only as controlled culture';
       case 'Microcystis':
       case 'Karenia':
       case 'Nodularia':
       case 'Oscillatoria':
       case 'Gymnodinium':
       case 'Prorocentrum':
-        return 'لا - Research only';
+        return 'No - Research only';
       case 'Noctiluca':
-        return 'لا - Valued for ecotourism only';
+        return 'No - Valued for ecotourism only';
       default:
-        return 'بشروط - Requires testing';
-    }
-  }
-
-  String _getDefaultArabicName(String name) {
-    switch (name) {
-      case 'Anabaena': return 'الأنابينا';
-      case 'Aphanizomenon': return 'أفانيزومينون';
-      case 'Gymnodinium': return 'جمنودينيوم';
-      case 'Karenia': return 'كارينيا';
-      case 'Microcystis': return 'ميكروسيستيس';
-      case 'Noctiluca': return 'نوقتيلوكا';
-      case 'Nodularia': return 'نوديولاريا';
-      case 'Nostoc': return 'نُستوك';
-      case 'Oscillatoria': return 'أوسيلاتوريا';
-      case 'Prorocentrum': return 'بروروسنتروم';
-      case 'Skeletonema': return 'سكيليتونيما';
-      default: return 'طحالب';
+        return 'Conditional - Requires testing';
     }
   }
 
@@ -227,9 +237,46 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
     );
   }
 
+  void _viewChatDetails(Map<String, dynamic> chat) {
+    List<Map<String, dynamic>> convertedMessages = [];
+
+    try {
+      final messages = chat['messages'];
+      if (messages != null && messages is List) {
+        for (var msg in messages) {
+          if (msg is Map) {
+            final convertedMsg = {
+              'text': msg['text']?.toString() ?? '',
+              'isUser': msg['isUser'] == true,
+              'timestamp': msg['timestamp']?.toString() ?? DateTime.now().toIso8601String(),
+              'recommendations': msg['recommendations'] is List
+                  ? List<String>.from(msg['recommendations'])
+                  : [],
+              'isError': msg['isError'] == true,
+            };
+            convertedMessages.add(convertedMsg);
+          }
+        }
+      }
+    } catch (e) {
+      print('Error converting chat messages: $e');
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatAssistantScreen(
+          algaeType: chat['algaeType'] ?? 'Unknown',
+          classificationResult: chat['classificationResult'],
+          initialMessages: convertedMessages.isEmpty ? null : convertedMessages,
+        ),
+      ),
+    );
+  }
+
   void _deleteAnalysis(String id) async {
     await HistoryService.deleteAnalysis(id);
-    await _loadHistory();
+    await _loadAllHistory();
     _showSnackBar('Analysis deleted', AppColors.successGreen);
   }
 
@@ -321,7 +368,7 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      AppStrings.analysisHistory,
+                      'Analysis History',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 22,
@@ -330,7 +377,7 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${_analysisHistory.length} recent analysis',
+                      '${_analysisHistory.length} saved analyses',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.8),
                         fontSize: 14,
@@ -361,28 +408,34 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
 
   Widget _buildHistoryList() {
     return RefreshIndicator(
-      onRefresh: _loadHistory,
+      onRefresh: _loadAllHistory,
       backgroundColor: AppColors.primaryBlue,
       color: Colors.white,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         itemCount: _analysisHistory.length,
         itemBuilder: (context, index) {
           final analysis = _analysisHistory[index];
-          return _buildHistoryCard(analysis);
+          final relatedChat = _chatHistory.firstWhere(
+                (chat) => chat['algaeType'] == analysis['algaeType'] &&
+                chat['date'] == analysis['date'],
+            orElse: () => {},
+          );
+          return _buildHistoryCard(analysis, relatedChat);
         },
       ),
     );
   }
 
-  Widget _buildHistoryCard(Map<String, dynamic> analysis) {
+  Widget _buildHistoryCard(Map<String, dynamic> analysis, Map<String, dynamic> relatedChat) {
     final confidence = (analysis['confidence'] is double
         ? analysis['confidence']
-        : double.parse(analysis['confidence'].toString())) *
-        100;
+        : double.parse(analysis['confidence'].toString())) * 100;
     final confidenceInt = confidence.toInt();
     final algaeType = analysis['algaeType'] ?? 'Unknown';
-    final arabicName = analysis['arabicName'] ?? _getDefaultArabicName(algaeType);
+    final hasChat = relatedChat.isNotEmpty;
+    final isNontoxic = algaeType.toLowerCase() == 'nontoxic';
+    final imagePath = _getAlgaeImagePath(algaeType);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -399,42 +452,43 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
       ),
       child: Material(
         color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _viewAnalysisDetails(analysis),
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+        child: Column(
+          children: [
+            InkWell(
+              onTap: () => _viewAnalysisDetails(analysis),
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryBlue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.science,
-                          color: AppColors.primaryBlue, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            arabicName,
-                            style: TextStyle(
-                              color: AppColors.primaryBlue,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                    // Header with image and title
+                    Row(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: isNontoxic
+                                ? AppColors.successGreen.withOpacity(0.15)
+                                : AppColors.primaryBlue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            image: !isNontoxic && imagePath != 'assets/images/App_Logo.png' && imagePath != 'nontoxic_icon'
+                                ? DecorationImage(
+                              image: AssetImage(imagePath),
+                              fit: BoxFit.cover,
+                            )
+                                : null,
                           ),
-                          Text(
+                          child: isNontoxic
+                              ? Image.asset("assets/images/Nontoxic.png")
+                              : (imagePath == 'assets/images/Nontoxic.png'
+                              ? Image.asset("assets/images/Nontoxic.png")
+                              : null),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
                             algaeType,
                             style: TextStyle(
                               color: AppColors.textPrimary,
@@ -444,118 +498,186 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => _deleteAnalysis(analysis['id']),
-                      icon: Icon(Icons.delete_outline,
-                          color: AppColors.errorRed.withOpacity(0.7), size: 20),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                Row(
-                  children: [
-                    Container(
-                      padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _getConfidenceColor(confidenceInt),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '$confidenceInt%',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Icon(Icons.calendar_today,
-                        size: 14, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${analysis['date']} - ${analysis['time']}',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const Spacer(),
-                    if (analysis['isToxic'] == true)
-                      Container(
-                        padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.toxicRed.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: AppColors.toxicRed, width: 1),
+                        IconButton(
+                          onPressed: () => _deleteAnalysis(analysis['id']),
+                          icon: Icon(Icons.delete_outline,
+                              color: AppColors.errorRed.withOpacity(0.7), size: 20),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                         ),
-                        child: Row(
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Confidence and date row
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getConfidenceColor(confidenceInt),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '$confidenceInt%',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.warning,
-                                size: 12, color: AppColors.toxicRed),
+                            Icon(Icons.calendar_today,
+                                size: 14, color: AppColors.textSecondary),
                             const SizedBox(width: 4),
                             Text(
-                              AppStrings.toxic,
+                              '${analysis['date']} - ${analysis['time']}',
                               style: TextStyle(
-                                color: AppColors.toxicRed,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                  ],
-                ),
+                        if (analysis['isToxic'] == true)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.toxicRed.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: AppColors.toxicRed, width: 1),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.warning,
+                                    size: 12, color: AppColors.toxicRed),
+                                const SizedBox(width: 4),
+                                Text(
+                                  AppStrings.toxic,
+                                  style: TextStyle(
+                                    color: AppColors.toxicRed,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
 
-                const SizedBox(height: 16),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _viewAnalysisDetails(analysis),
-                        icon: const Icon(Icons.visibility, size: 18),
-                        label: const Text(AppStrings.viewDetails),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryBlue,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                    // Buttons row
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        SizedBox(
+                          width: (MediaQuery.of(context).size.width * 0.85 - 60) * 0.6,
+                          child: ElevatedButton.icon(
+                            onPressed: () => _viewAnalysisDetails(analysis),
+                            icon: const Icon(Icons.visibility, size: 18),
+                            label: const Text(AppStrings.viewDetails),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryBlue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
                           ),
                         ),
+                        SizedBox(
+                          width: (MediaQuery.of(context).size.width * 0.85 - 60) * 0.25,
+                          child: ElevatedButton.icon(
+                            onPressed: () => _generatePDF(analysis),
+                            icon: const Icon(Icons.picture_as_pdf, size: 18),
+                            label: const Text('PDF'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.accentGreen,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Chat Section - إذا وجدت محادثة مرتبطة
+            if (hasChat) ...[
+              const Divider(height: 1, thickness: 1),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentGreen.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.chat_bubble_outline,
+                          size: 16, color: AppColors.accentGreen),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'AI Assistant',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.accentGreen,
+                            ),
+                          ),
+                          Text(
+                            relatedChat['lastMessage'] ?? 'No messages',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    ElevatedButton.icon(
-                      onPressed: () => _generatePDF(analysis),
-                      icon: const Icon(Icons.picture_as_pdf, size: 18),
-                      label: const Text('PDF'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accentGreen,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 16),
+                    OutlinedButton.icon(
+                      onPressed: () => _viewChatDetails(relatedChat),
+                      icon: Icon(Icons.arrow_forward, size: 14, color: AppColors.accentGreen),
+                      label: const Text('Resume', style: TextStyle(fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.accentGreen,
+                        side: BorderSide(color: AppColors.accentGreen),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -597,7 +719,7 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
             ),
             const SizedBox(height: 20),
             Text(
-              AppStrings.noHistory,
+              'No analyses yet',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.9),
                 fontSize: 20,
@@ -606,7 +728,7 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
             ),
             const SizedBox(height: 10),
             Text(
-              'Your recent analyses will appear here',
+              'Start a new analysis to see results here',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.7),
                 fontSize: 14,
@@ -621,8 +743,7 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: AppColors.primaryBlue,
-                padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
             ),
           ],
@@ -661,6 +782,7 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
       ),
     );
   }
+
   Color _getConfidenceColor(int confidence) {
     if (confidence >= 90) return AppColors.confidenceHigh;
     if (confidence >= 70) return AppColors.confidenceMedium;

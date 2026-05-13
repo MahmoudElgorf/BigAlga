@@ -1,4 +1,3 @@
-// lib/core/services/pdf_service.dart
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:bioalga/core/constants/constants.dart';
@@ -34,7 +33,7 @@ class PDFService {
     }
   }
 
-  // ================= GENERATE FROM AlgaeResult (COMPLETE) =================
+  // ================= GENERATE FROM AlgaeResult =================
   static Future<void> _generateFromAlgaeResult(
       AlgaeResult result,
       File imageFile,
@@ -46,7 +45,7 @@ class PDFService {
     final logoBytes = await rootBundle.load(AppAssets.appLogo);
     final logo = pw.MemoryImage(logoBytes.buffer.asUint8List());
 
-    // Read image
+    // Read image with validation
     Uint8List? imageBytes;
     if (await imageFile.exists()) {
       imageBytes = await imageFile.readAsBytes();
@@ -55,63 +54,31 @@ class PDFService {
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(PDFSizes.pageMargin),
+        margin: const pw.EdgeInsets.all(20), // Use fixed value instead of PDFSizes
         build: (context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
+            mainAxisSize: pw.MainAxisSize.min,
             children: [
-              // Header with logo
               _buildHeader(logo, result.dateTime, font),
-
-              pw.SizedBox(height: PDFSizes.sectionSpacing),
-
-              // Title with Arabic name
+              pw.SizedBox(height: 8),
               _buildTitle(result, font),
-
-              pw.SizedBox(height: PDFSizes.sectionSpacing),
-
-              // Image section
-              if (imageBytes != null) _buildImageSection(imageBytes, font),
-
-              pw.SizedBox(height: PDFSizes.largeSpacing),
-
-              // Main result card
+              pw.SizedBox(height: 8),
+              _buildImageAndInfoSection(imageBytes, result, font),
+              pw.SizedBox(height: 8),
               _buildMainResult(result, font),
-
-              pw.SizedBox(height: PDFSizes.sectionSpacing),
-
-              // NEW: Scientific Warning (important)
+              pw.SizedBox(height: 8),
               if (result.scientificWarning.isNotEmpty)
                 _buildScientificWarning(result, font),
-
-              pw.SizedBox(height: PDFSizes.sectionSpacing),
-
-              // NEW: Toxins and Safety Details
+              pw.SizedBox(height: 8),
               _buildToxinsAndSafety(result, font),
-
-              pw.SizedBox(height: PDFSizes.sectionSpacing),
-
-              // Scientific classification
+              pw.SizedBox(height: 8),
               _buildScientificInfo(result, font),
-
-              pw.SizedBox(height: PDFSizes.sectionSpacing),
-
-              // NEW: CO2 and Commercial Info
+              pw.SizedBox(height: 8),
               _buildEnvironmentalAndCommercialInfo(result, font),
-
-              pw.SizedBox(height: PDFSizes.sectionSpacing),
-
-              // Benefits and Uses
-              _buildBenefitsAndUses(result, font),
-
-              pw.SizedBox(height: PDFSizes.sectionSpacing),
-
-              // Technical information
+              pw.SizedBox(height: 8),
               _buildTechnicalInfo(result, font),
-
-              pw.SizedBox(height: PDFSizes.sectionSpacing),
-
-              // Footer
+              pw.SizedBox(height: 8),
               _buildFooter(font),
             ],
           );
@@ -134,7 +101,7 @@ class PDFService {
     final logoBytes = await rootBundle.load(AppAssets.appLogo);
     final logo = pw.MemoryImage(logoBytes.buffer.asUint8List());
 
-    // Read image
+    // Read image with validation
     Uint8List? imageBytes;
     if (await imageFile.exists()) {
       imageBytes = await imageFile.readAsBytes();
@@ -143,81 +110,21 @@ class PDFService {
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(PDFSizes.pageMargin),
+        margin: const pw.EdgeInsets.all(20),
         build: (context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
+            mainAxisSize: pw.MainAxisSize.min,
             children: [
-              // Header
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Image(logo, width: PDFSizes.logoWidth, height: PDFSizes.logoHeight),
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
-                    children: [
-                      pw.Text(
-                        PDFStrings.historicalReport,
-                        style: pw.TextStyle(
-                          font: font,
-                          fontSize: PDFSizes.titleFontSize,
-                          fontWeight: pw.FontWeight.bold,
-                          color: AppColorsPDF.primaryBlue,
-                        ),
-                      ),
-                      pw.Text(
-                        PDFStrings.archivedReport,
-                        style: pw.TextStyle(
-                          font: font,
-                          fontSize: PDFSizes.subtitleFontSize,
-                          color: PdfColors.grey700,
-                        ),
-                      ),
-                      pw.SizedBox(height: PDFSizes.smallSpacing),
-                      pw.Text(
-                        '${PDFStrings.date}: ${historyData['date'] ?? PDFStrings.notSpecified}',
-                        style: pw.TextStyle(
-                          font: font,
-                          fontSize: PDFSizes.smallFontSize,
-                          color: PdfColors.grey600,
-                        ),
-                      ),
-                      pw.Text(
-                        '${PDFStrings.time}: ${historyData['time'] ?? PDFStrings.notSpecified}',
-                        style: pw.TextStyle(
-                          font: font,
-                          fontSize: PDFSizes.smallFontSize,
-                          color: PdfColors.grey600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
+              _buildHeader(logo, DateTime.now(), font),
               pw.Divider(color: PdfColors.grey300, thickness: 1),
-              pw.SizedBox(height: PDFSizes.sectionSpacing),
-
+              pw.SizedBox(height: 8),
               _buildHistoryTitle(historyData, font),
-
-              pw.SizedBox(height: PDFSizes.sectionSpacing),
-
-              // Image
-              if (imageBytes != null) _buildImageSection(imageBytes, font),
-
-              pw.SizedBox(height: PDFSizes.sectionSpacing),
-
-              // Analysis results container
+              pw.SizedBox(height: 8),
+              _buildHistoryImageAndInfoSection(imageBytes, historyData, font),
+              pw.SizedBox(height: 8),
               _buildHistoryResults(historyData, font),
-
-              pw.SizedBox(height: PDFSizes.sectionSpacing),
-
-              // Benefits and Uses from history
-              if (historyData['benefits'] is List && (historyData['benefits'] as List).isNotEmpty)
-                _buildHistoryBenefitsAndUses(historyData, font),
-
-              pw.SizedBox(height: PDFSizes.sectionSpacing),
-
+              pw.SizedBox(height: 8),
               _buildHistoryFooter(font, historyData),
             ],
           );
@@ -226,6 +133,297 @@ class PDFService {
     );
 
     await _savePDF(pdf, 'History_${historyData['date']}_${historyData['algaeType']}');
+  }
+
+  // ================= Image on Right + Benefits/Uses on Left =================
+  static pw.Widget _buildImageAndInfoSection(
+      Uint8List? imageBytes,
+      AlgaeResult result,
+      pw.Font font,
+      ) {
+    return pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      mainAxisSize: pw.MainAxisSize.min,
+      children: [
+        // Left Side - Benefits and Uses Card
+        pw.Container(
+          width: 220,
+          child: _buildInfoCard(result, font),
+        ),
+        pw.SizedBox(width: 12),
+        // Right Side - Image
+        pw.Container(
+          width: 250,
+          height: 250,
+          child: _buildImageCard(imageBytes, font),
+        ),
+      ],
+    );
+  }
+
+  // Info Card for Benefits and Uses
+  static pw.Widget _buildInfoCard(AlgaeResult result, pw.Font font) {
+    return pw.Container(
+      width: 220,
+      padding: const pw.EdgeInsets.all(8),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.white,
+        borderRadius: pw.BorderRadius.circular(8),
+        border: pw.Border.all(color: AppColorsPDF.primaryBlue, width: 1.5),
+        boxShadow: const [
+          pw.BoxShadow(
+            color: PdfColors.grey200,
+            blurRadius: 4,
+          ),
+        ],
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisSize: pw.MainAxisSize.min,
+        children: [
+          pw.Text(
+            'KEY INFORMATION',
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 12,
+              fontWeight: pw.FontWeight.bold,
+              color: AppColorsPDF.primaryBlue,
+            ),
+          ),
+          pw.Divider(color: AppColorsPDF.lightGreen, thickness: 1),
+          pw.SizedBox(height: 6),
+
+          pw.Text(
+            'BENEFITS',
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 10,
+              fontWeight: pw.FontWeight.bold,
+              color: AppColorsPDF.successText,
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          ...result.benefits.take(3).map((benefit) => pw.Padding(
+            padding: const pw.EdgeInsets.only(bottom: 4, left: 8),
+            child: pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              mainAxisSize: pw.MainAxisSize.min,
+              children: [
+                pw.Text('• ', style: pw.TextStyle(font: font, fontSize: 9, color: AppColorsPDF.successText)),
+                pw.Container(
+                  width: 180,
+                  child: pw.Text(
+                    benefit,
+                    style: pw.TextStyle(font: font, fontSize: 9),
+                    softWrap: true,
+                  ),
+                ),
+              ],
+            ),
+          )).toList(),
+
+          pw.SizedBox(height: 6),
+
+          pw.Text(
+            'APPLICATIONS',
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 10,
+              fontWeight: pw.FontWeight.bold,
+              color: AppColorsPDF.primaryBlue,
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          ...result.uses.take(3).map((use) => pw.Padding(
+            padding: const pw.EdgeInsets.only(bottom: 4, left: 8),
+            child: pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              mainAxisSize: pw.MainAxisSize.min,
+              children: [
+                pw.Text('• ', style: pw.TextStyle(font: font, fontSize: 9, color: AppColorsPDF.primaryBlue)),
+                pw.Container(
+                  width: 180,
+                  child: pw.Text(
+                    use,
+                    style: pw.TextStyle(font: font, fontSize: 9),
+                    softWrap: true,
+                  ),
+                ),
+              ],
+            ),
+          )).toList(),
+        ],
+      ),
+    );
+  }
+
+  // Image Card - FIXED to avoid infinity
+  static pw.Widget _buildImageCard(Uint8List? imageBytes, pw.Font font) {
+    if (imageBytes == null) {
+      return pw.Container(
+        width: 250,
+        height: 250,
+        decoration: pw.BoxDecoration(
+          color: PdfColors.grey200,
+          borderRadius: pw.BorderRadius.circular(8),
+          border: pw.Border.all(color: PdfColors.grey400, width: 1.5),
+        ),
+        child: pw.Center(
+          child: pw.Text(
+            'No Image Available',
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 10,
+              color: PdfColors.grey600,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return pw.Container(
+      width: 250,
+      height: 250,
+      decoration: pw.BoxDecoration(
+        borderRadius: pw.BorderRadius.circular(8),
+        border: pw.Border.all(color: AppColorsPDF.primaryBlue, width: 1.5),
+        boxShadow: const [
+          pw.BoxShadow(
+            color: PdfColors.grey200,
+            blurRadius: 4,
+          ),
+        ],
+      ),
+      child: pw.Image(
+        pw.MemoryImage(imageBytes),
+        width: 250,
+        height: 250,
+        fit: pw.BoxFit.cover,
+      ),
+    );
+  }
+
+  // History Image and Info Section
+  static pw.Widget _buildHistoryImageAndInfoSection(
+      Uint8List? imageBytes,
+      Map<String, dynamic> historyData,
+      pw.Font font,
+      ) {
+    return pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      mainAxisSize: pw.MainAxisSize.min,
+      children: [
+        pw.Container(
+          width: 220,
+          child: _buildHistoryInfoCard(historyData, font),
+        ),
+        pw.SizedBox(width: 12),
+        pw.Container(
+          width: 250,
+          height: 250,
+          child: _buildImageCard(imageBytes, font),
+        ),
+      ],
+    );
+  }
+
+  // History Info Card
+  static pw.Widget _buildHistoryInfoCard(Map<String, dynamic> historyData, pw.Font font) {
+    final benefits = historyData['benefits'] as List? ?? [];
+    final uses = historyData['uses'] as List? ?? [];
+
+    return pw.Container(
+      width: 220,
+      padding: const pw.EdgeInsets.all(8),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.white,
+        borderRadius: pw.BorderRadius.circular(8),
+        border: pw.Border.all(color: AppColorsPDF.primaryBlue, width: 1.5),
+        boxShadow: const [
+          pw.BoxShadow(
+            color: PdfColors.grey200,
+            blurRadius: 4,
+          ),
+        ],
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisSize: pw.MainAxisSize.min,
+        children: [
+          pw.Text(
+            'KEY INFORMATION',
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 12,
+              fontWeight: pw.FontWeight.bold,
+              color: AppColorsPDF.primaryBlue,
+            ),
+          ),
+          pw.Divider(color: AppColorsPDF.lightGreen, thickness: 1),
+          pw.SizedBox(height: 6),
+
+          pw.Text(
+            'BENEFITS',
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 10,
+              fontWeight: pw.FontWeight.bold,
+              color: AppColorsPDF.successText,
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          ...benefits.take(3).map((benefit) => pw.Padding(
+            padding: const pw.EdgeInsets.only(bottom: 4, left: 8),
+            child: pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              mainAxisSize: pw.MainAxisSize.min,
+              children: [
+                pw.Text('• ', style: pw.TextStyle(font: font, fontSize: 9, color: AppColorsPDF.successText)),
+                pw.Container(
+                  width: 180,
+                  child: pw.Text(
+                    benefit.toString(),
+                    style: pw.TextStyle(font: font, fontSize: 9),
+                    softWrap: true,
+                  ),
+                ),
+              ],
+            ),
+          )).toList(),
+
+          pw.SizedBox(height: 6),
+
+          pw.Text(
+            'APPLICATIONS',
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 10,
+              fontWeight: pw.FontWeight.bold,
+              color: AppColorsPDF.primaryBlue,
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          ...uses.take(3).map((use) => pw.Padding(
+            padding: const pw.EdgeInsets.only(bottom: 4, left: 8),
+            child: pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              mainAxisSize: pw.MainAxisSize.min,
+              children: [
+                pw.Text('• ', style: pw.TextStyle(font: font, fontSize: 9, color: AppColorsPDF.primaryBlue)),
+                pw.Container(
+                  width: 180,
+                  child: pw.Text(
+                    use.toString(),
+                    style: pw.TextStyle(font: font, fontSize: 9),
+                    softWrap: true,
+                  ),
+                ),
+              ],
+            ),
+          )).toList(),
+        ],
+      ),
+    );
   }
 
   // ================= BUILDER FUNCTIONS =================
@@ -239,16 +437,19 @@ class PDFService {
 
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      mainAxisSize: pw.MainAxisSize.max,
       children: [
-        pw.Image(logo, width: PDFSizes.headerLogoWidth, height: PDFSizes.headerLogoHeight),
+        // Text on the left
         pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.end,
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          mainAxisSize: pw.MainAxisSize.min,
           children: [
             pw.Text(
               AppStrings.appName,
               style: pw.TextStyle(
                 font: font,
-                fontSize: PDFSizes.headerFontSize,
+                fontSize: 16,
                 fontWeight: pw.FontWeight.bold,
                 color: AppColorsPDF.primaryBlue,
               ),
@@ -257,16 +458,16 @@ class PDFService {
               AppStrings.marineSystem,
               style: pw.TextStyle(
                 font: font,
-                fontSize: PDFSizes.subtitleFontSize,
+                fontSize: 10,
                 color: PdfColors.grey700,
               ),
             ),
-            pw.SizedBox(height: PDFSizes.smallSpacing),
+            pw.SizedBox(height: 6),
             pw.Text(
               '${PDFStrings.reportDate}: $year-$month-$day',
               style: pw.TextStyle(
                 font: font,
-                fontSize: PDFSizes.xsmallFontSize,
+                fontSize: 9,
                 color: PdfColors.grey600,
               ),
             ),
@@ -274,23 +475,26 @@ class PDFService {
               '${PDFStrings.reportTime}: $hour:$minute',
               style: pw.TextStyle(
                 font: font,
-                fontSize: PDFSizes.xsmallFontSize,
+                fontSize: 9,
                 color: PdfColors.grey600,
               ),
             ),
           ],
         ),
+
+        pw.Spacer(),
+
+        // Logo on the right
+        pw.Image(logo, width: 100, height: 100),
       ],
     );
-  }
-
-  static pw.Widget _buildTitle(AlgaeResult result, pw.Font font) {
+  }  static pw.Widget _buildTitle(AlgaeResult result, pw.Font font) {
     return pw.Container(
-      width: double.infinity,
-      padding: const pw.EdgeInsets.all(PDFSizes.cardPaddingLarge),
+      width: 550,
+      padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
         color: result.isToxic ? AppColorsPDF.errorBackground : AppColorsPDF.backgroundLight,
-        borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
+        borderRadius: pw.BorderRadius.circular(8),
         border: pw.Border.all(
           color: result.isToxic ? AppColorsPDF.errorBorder : AppColorsPDF.accentGreen,
           width: 2,
@@ -298,31 +502,21 @@ class PDFService {
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.center,
+        mainAxisSize: pw.MainAxisSize.min,
         children: [
-          // Arabic name
-          if (result.arabicName.isNotEmpty)
-            pw.Text(
-              result.arabicName,
-              style: pw.TextStyle(
-                font: font,
-                fontSize: 24,
-                fontWeight: pw.FontWeight.bold,
-                color: AppColorsPDF.primaryBlue,
-              ),
-            ),
-          // Scientific name
+          // تم إزالة الاسم العربي نهائياً
           pw.Text(
             result.scientificName,
             style: pw.TextStyle(
               font: font,
-              fontSize: 16,
+              fontSize: 14,
               fontStyle: pw.FontStyle.italic,
               color: PdfColors.grey700,
             ),
           ),
-          pw.SizedBox(height: PDFSizes.smallSpacing),
+          pw.SizedBox(height: 6),
           pw.Container(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: pw.BoxDecoration(
               color: result.isToxic ? AppColorsPDF.errorText : AppColorsPDF.successText,
               borderRadius: pw.BorderRadius.circular(20),
@@ -331,7 +525,7 @@ class PDFService {
               result.isToxic ? 'TOXIC SPECIES' : 'NON-TOXIC',
               style: pw.TextStyle(
                 font: font,
-                fontSize: 10,
+                fontSize: 8,
                 fontWeight: pw.FontWeight.bold,
                 color: PdfColors.white,
               ),
@@ -341,55 +535,16 @@ class PDFService {
       ),
     );
   }
-
-  static pw.Widget _buildImageSection(Uint8List imageBytes, pw.Font font) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(
-          PDFStrings.analyzedSample,
-          style: pw.TextStyle(
-            font: font,
-            fontSize: PDFSizes.mediumFontSize,
-            fontWeight: pw.FontWeight.bold,
-            color: AppColorsPDF.primaryBlue,
-          ),
-        ),
-        pw.SizedBox(height: PDFSizes.smallSpacing),
-        pw.Center(
-          child: pw.Container(
-            decoration: pw.BoxDecoration(
-              borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
-              border: pw.Border.all(color: PdfColors.grey300, width: 1),
-              boxShadow: const [
-                pw.BoxShadow(
-                  color: PdfColors.grey400,
-                  blurRadius: 5,
-                ),
-              ],
-            ),
-            child: pw.Image(
-              pw.MemoryImage(imageBytes),
-              width: PDFSizes.largeImageWidth,
-              height: PDFSizes.largeImageHeight,
-              fit: pw.BoxFit.cover,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   static pw.Widget _buildMainResult(AlgaeResult result, pw.Font font) {
     final confidencePercent = (result.confidence * 100).toStringAsFixed(1);
     final confidenceColor = _getConfidenceColor(result.confidence);
 
     return pw.Container(
-      width: double.infinity,
-      padding: const pw.EdgeInsets.all(PDFSizes.cardPaddingLarge),
+      width: 550,
+      padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
         color: PdfColors.white,
-        borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
+        borderRadius: pw.BorderRadius.circular(8),
         border: pw.Border.all(color: AppColorsPDF.primaryBlue, width: 1.5),
         boxShadow: const [
           pw.BoxShadow(
@@ -400,47 +555,44 @@ class PDFService {
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisSize: pw.MainAxisSize.min,
         children: [
           pw.Text(
             'PRIMARY IDENTIFICATION RESULT',
             style: pw.TextStyle(
               font: font,
-              fontSize: PDFSizes.mediumFontSize,
+              fontSize: 12,
               fontWeight: pw.FontWeight.bold,
               color: AppColorsPDF.primaryBlue,
             ),
           ),
           pw.Divider(color: AppColorsPDF.lightGreen, thickness: 1),
-          pw.SizedBox(height: PDFSizes.mediumSpacing),
+          pw.SizedBox(height: 8),
 
           _buildInfoRow('Algae Name', result.name, font),
           _buildInfoRow('Scientific Name', result.scientificName, font),
-          if (result.arabicName.isNotEmpty)
-            _buildInfoRow('Arabic Name', result.arabicName, font),
+          // تم إزالة صف Arabic Name
           _buildInfoRow('Category', result.category, font),
 
-          pw.SizedBox(height: PDFSizes.mediumSpacing),
+          pw.SizedBox(height: 8),
 
           pw.Row(
+            mainAxisSize: pw.MainAxisSize.min,
             children: [
-              pw.Expanded(
-                child: _buildMetricCard(
-                  'Confidence',
-                  '$confidencePercent%',
-                  confidenceColor,
-                  result.confidenceLevel,
-                  font,
-                ),
+              _buildMetricCard(
+                'Confidence',
+                '$confidencePercent%',
+                confidenceColor,
+                result.confidenceLevel,
+                font,
               ),
-              pw.SizedBox(width: PDFSizes.smallSpacing),
-              pw.Expanded(
-                child: _buildMetricCard(
-                  'Safety Status',
-                  result.isToxic ? 'TOXIC' : 'SAFE',
-                  result.isToxic ? AppColorsPDF.errorText : AppColorsPDF.successText,
-                  result.isToxic ? 'Handle with Care' : 'Safe for Handling',
-                  font,
-                ),
+              pw.SizedBox(width: 8),
+              _buildMetricCard(
+                'Safety Status',
+                result.isToxic ? 'TOXIC' : 'SAFE',
+                result.isToxic ? AppColorsPDF.errorText : AppColorsPDF.successText,
+                result.isToxic ? 'Handle with Care' : 'Safe for Handling',
+                font,
               ),
             ],
           ),
@@ -448,44 +600,48 @@ class PDFService {
       ),
     );
   }
-
   static pw.Widget _buildScientificWarning(AlgaeResult result, pw.Font font) {
     return pw.Container(
-      width: double.infinity,
-      padding: const pw.EdgeInsets.all(PDFSizes.cardPadding),
+      width: 550,
+      padding: const pw.EdgeInsets.all(10),
       decoration: pw.BoxDecoration(
         color: AppColorsPDF.errorBackground,
-        borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
+        borderRadius: pw.BorderRadius.circular(8),
         border: pw.Border.all(color: AppColorsPDF.errorBorder, width: 1.5),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisSize: pw.MainAxisSize.min,
         children: [
           pw.Row(
+            mainAxisSize: pw.MainAxisSize.min,
             children: [
               pw.Text(
                 '! ',
-                style: pw.TextStyle(fontSize: 16),
+                style: pw.TextStyle(fontSize: 14),
               ),
               pw.Text(
                 'SCIENTIFIC WARNING',
                 style: pw.TextStyle(
                   font: font,
-                  fontSize: PDFSizes.mediumFontSize,
+                  fontSize: 11,
                   fontWeight: pw.FontWeight.bold,
                   color: AppColorsPDF.errorText,
                 ),
               ),
             ],
           ),
-          pw.SizedBox(height: PDFSizes.smallSpacing),
-          pw.Text(
-            result.scientificWarning,
-            style: pw.TextStyle(
-              font: font,
-              fontSize: PDFSizes.smallFontSize,
-              color: AppColorsPDF.errorText,
-              lineSpacing: 1.3,
+          pw.SizedBox(height: 6),
+          pw.Container(
+            width: 520,
+            child: pw.Text(
+              result.scientificWarning,
+              style: pw.TextStyle(
+                font: font,
+                fontSize: 9,
+                color: AppColorsPDF.errorText,
+                lineSpacing: 1.3,
+              ),
             ),
           ),
         ],
@@ -495,52 +651,55 @@ class PDFService {
 
   static pw.Widget _buildToxinsAndSafety(AlgaeResult result, pw.Font font) {
     return pw.Container(
-      width: double.infinity,
-      padding: const pw.EdgeInsets.all(PDFSizes.cardPadding),
+      width: 550,
+      padding: const pw.EdgeInsets.all(10),
       decoration: pw.BoxDecoration(
         color: PdfColors.grey50,
-        borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
+        borderRadius: pw.BorderRadius.circular(8),
         border: pw.Border.all(color: PdfColors.grey300),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisSize: pw.MainAxisSize.min,
         children: [
           pw.Text(
             'TOXINS AND SAFETY INFORMATION',
             style: pw.TextStyle(
               font: font,
-              fontSize: PDFSizes.mediumFontSize,
+              fontSize: 11,
               fontWeight: pw.FontWeight.bold,
               color: AppColorsPDF.primaryBlue,
             ),
           ),
           pw.Divider(color: PdfColors.grey400),
-          pw.SizedBox(height: PDFSizes.smallSpacing),
+          pw.SizedBox(height: 6),
 
           _buildInfoRow('Toxicity Warning', result.toxicityWarning, font),
 
           if (result.potentialToxins.isNotEmpty) ...[
-            pw.SizedBox(height: PDFSizes.smallSpacing),
+            pw.SizedBox(height: 6),
             pw.Text(
               'Potential Toxins:',
               style: pw.TextStyle(
                 font: font,
                 fontWeight: pw.FontWeight.bold,
-                fontSize: PDFSizes.smallFontSize,
+                fontSize: 9,
               ),
             ),
             pw.SizedBox(height: 4),
-            ...result.potentialToxins.map((toxin) => pw.Padding(
+            ...result.potentialToxins.take(3).map((toxin) => pw.Padding(
               padding: const pw.EdgeInsets.only(left: 12, bottom: 4),
               child: pw.Row(
+                mainAxisSize: pw.MainAxisSize.min,
                 children: [
-                  pw.Text('- ', style: pw.TextStyle(font: font)),
-                  pw.Expanded(
+                  pw.Text('• ', style: pw.TextStyle(font: font, fontSize: 9)),
+                  pw.Container(
+                    width: 500,
                     child: pw.Text(
                       toxin,
                       style: pw.TextStyle(
                         font: font,
-                        fontSize: PDFSizes.smallFontSize,
+                        fontSize: 9,
                         color: result.isToxic ? AppColorsPDF.errorText : PdfColors.grey700,
                       ),
                     ),
@@ -555,30 +714,29 @@ class PDFService {
   }
 
   static pw.Widget _buildScientificInfo(AlgaeResult result, pw.Font font) {
-    final algaeInfo = _getDetailedAlgaeInfo(result.name);
-
     return pw.Container(
-      width: double.infinity,
-      padding: const pw.EdgeInsets.all(PDFSizes.cardPadding),
+      width: 550,
+      padding: const pw.EdgeInsets.all(10),
       decoration: pw.BoxDecoration(
         color: PdfColors.grey50,
-        borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
+        borderRadius: pw.BorderRadius.circular(8),
         border: pw.Border.all(color: PdfColors.grey300),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisSize: pw.MainAxisSize.min,
         children: [
           pw.Text(
             'SCIENTIFIC CLASSIFICATION',
             style: pw.TextStyle(
               font: font,
-              fontSize: PDFSizes.mediumFontSize,
+              fontSize: 11,
               fontWeight: pw.FontWeight.bold,
               color: AppColorsPDF.primaryBlue,
             ),
           ),
           pw.Divider(color: PdfColors.grey400),
-          pw.SizedBox(height: PDFSizes.smallSpacing),
+          pw.SizedBox(height: 6),
 
           _buildInfoRow('Domain', 'Bacteria / Eukaryota', font),
           _buildInfoRow('Phylum', _getPhylum(result.name), font),
@@ -586,7 +744,6 @@ class PDFService {
           _buildInfoRow('Order', _getOrder(result.name), font),
           _buildInfoRow('Family', _getFamily(result.name), font),
           _buildInfoRow('Genus', result.name, font),
-          _buildInfoRow('Habitat', algaeInfo['habitat'] ?? 'Various aquatic environments', font),
         ],
       ),
     );
@@ -594,73 +751,79 @@ class PDFService {
 
   static pw.Widget _buildEnvironmentalAndCommercialInfo(AlgaeResult result, pw.Font font) {
     return pw.Container(
-      width: double.infinity,
-      padding: const pw.EdgeInsets.all(PDFSizes.cardPadding),
+      width: 550,
+      padding: const pw.EdgeInsets.all(10),
       decoration: pw.BoxDecoration(
         color: AppColorsPDF.infoBackground,
-        borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
+        borderRadius: pw.BorderRadius.circular(8),
         border: pw.Border.all(color: AppColorsPDF.infoBorder),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisSize: pw.MainAxisSize.min,
         children: [
           pw.Text(
             'ENVIRONMENTAL AND COMMERCIAL INFORMATION',
             style: pw.TextStyle(
               font: font,
-              fontSize: PDFSizes.mediumFontSize,
+              fontSize: 11,
               fontWeight: pw.FontWeight.bold,
               color: AppColorsPDF.infoText,
             ),
           ),
           pw.Divider(color: AppColorsPDF.infoBorder),
-          pw.SizedBox(height: PDFSizes.smallSpacing),
+          pw.SizedBox(height: 6),
 
           pw.Row(
+            mainAxisSize: pw.MainAxisSize.min,
             children: [
-              pw.Expanded(
+              pw.Container(
+                width: 250,
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  mainAxisSize: pw.MainAxisSize.min,
                   children: [
                     pw.Text(
                       'CO2 Sequestration',
                       style: pw.TextStyle(
                         font: font,
                         fontWeight: pw.FontWeight.bold,
-                        fontSize: PDFSizes.smallFontSize,
+                        fontSize: 9,
                       ),
                     ),
                     pw.Text(
                       result.co2PerKg > 0
                           ? '~ ${result.co2PerKg.toStringAsFixed(2)} kg CO2/kg dry biomass'
-                          : 'Not applicable (heterotrophic)',
+                          : 'Not applicable',
                       style: pw.TextStyle(
                         font: font,
-                        fontSize: PDFSizes.smallFontSize,
+                        fontSize: 9,
                         color: PdfColors.grey700,
                       ),
                     ),
                   ],
                 ),
               ),
-              pw.SizedBox(width: PDFSizes.smallSpacing),
-              pw.Expanded(
+              pw.SizedBox(width: 8),
+              pw.Container(
+                width: 200,
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  mainAxisSize: pw.MainAxisSize.min,
                   children: [
                     pw.Text(
                       'Commercial Viability',
                       style: pw.TextStyle(
                         font: font,
                         fontWeight: pw.FontWeight.bold,
-                        fontSize: PDFSizes.smallFontSize,
+                        fontSize: 9,
                       ),
                     ),
                     pw.Text(
                       result.sellable,
                       style: pw.TextStyle(
                         font: font,
-                        fontSize: PDFSizes.smallFontSize,
+                        fontSize: 9,
                         color: result.sellable.contains('Yes') ? AppColorsPDF.successText :
                         (result.sellable.contains('No') ? AppColorsPDF.errorText : AppColorsPDF.warningOrange),
                       ),
@@ -675,137 +838,43 @@ class PDFService {
     );
   }
 
-  static pw.Widget _buildBenefitsAndUses(AlgaeResult result, pw.Font font) {
-    return pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Expanded(
-          child: pw.Container(
-            padding: const pw.EdgeInsets.all(PDFSizes.cardPadding),
-            decoration: pw.BoxDecoration(
-              color: AppColorsPDF.backgroundLight,
-              borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
-              border: pw.Border.all(color: AppColorsPDF.accentGreen),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  'BENEFITS',
-                  style: pw.TextStyle(
-                    font: font,
-                    fontSize: PDFSizes.mediumFontSize,
-                    fontWeight: pw.FontWeight.bold,
-                    color: AppColorsPDF.primaryBlue,
-                  ),
-                ),
-                pw.SizedBox(height: PDFSizes.smallSpacing),
-                ...result.benefits.map((benefit) => pw.Padding(
-                  padding: const pw.EdgeInsets.only(bottom: 6),
-                  child: pw.Row(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text('- ', style: pw.TextStyle(font: font, fontSize: PDFSizes.smallFontSize)),
-                      pw.Expanded(
-                        child: pw.Text(
-                          benefit,
-                          style: pw.TextStyle(font: font, fontSize: PDFSizes.smallFontSize),
-                        ),
-                      ),
-                    ],
-                  ),
-                )).toList(),
-              ],
-            ),
-          ),
-        ),
-        pw.SizedBox(width: PDFSizes.smallSpacing),
-        pw.Expanded(
-          child: pw.Container(
-            padding: const pw.EdgeInsets.all(PDFSizes.cardPadding),
-            decoration: pw.BoxDecoration(
-              color: AppColorsPDF.backgroundLight,
-              borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
-              border: pw.Border.all(color: AppColorsPDF.lightGreen),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  'APPLICATIONS',
-                  style: pw.TextStyle(
-                    font: font,
-                    fontSize: PDFSizes.mediumFontSize,
-                    fontWeight: pw.FontWeight.bold,
-                    color: AppColorsPDF.primaryBlue,
-                  ),
-                ),
-                pw.SizedBox(height: PDFSizes.smallSpacing),
-                ...result.uses.map((use) => pw.Padding(
-                  padding: const pw.EdgeInsets.only(bottom: 6),
-                  child: pw.Row(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text('- ', style: pw.TextStyle(font: font, fontSize: PDFSizes.smallFontSize)),
-                      pw.Expanded(
-                        child: pw.Text(
-                          use,
-                          style: pw.TextStyle(font: font, fontSize: PDFSizes.smallFontSize),
-                        ),
-                      ),
-                    ],
-                  ),
-                )).toList(),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   static pw.Widget _buildTechnicalInfo(AlgaeResult result, pw.Font font) {
     final modelInfo = result.modelInfo;
     final isApiUsed = modelInfo['apiUsed'] == true;
 
     return pw.Container(
-      width: double.infinity,
-      padding: const pw.EdgeInsets.all(PDFSizes.cardPadding),
+      width: 550,
+      padding: const pw.EdgeInsets.all(10),
       decoration: pw.BoxDecoration(
         color: PdfColors.grey100,
-        borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
+        borderRadius: pw.BorderRadius.circular(8),
         border: pw.Border.all(color: PdfColors.grey300),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisSize: pw.MainAxisSize.min,
         children: [
           pw.Text(
             'TECHNICAL INFORMATION',
             style: pw.TextStyle(
               font: font,
-              fontSize: PDFSizes.mediumFontSize,
+              fontSize: 11,
               fontWeight: pw.FontWeight.bold,
               color: PdfColors.grey700,
             ),
           ),
-          pw.SizedBox(height: PDFSizes.smallSpacing),
+          pw.SizedBox(height: 6),
 
           if (isApiUsed)
             pw.Text(
               '- Analysis performed using remote AI API service',
-              style: pw.TextStyle(font: font, fontSize: PDFSizes.xsmallFontSize, color: AppColorsPDF.infoText),
+              style: pw.TextStyle(font: font, fontSize: 8, color: AppColorsPDF.infoText),
             ),
 
           pw.Text(
             '- Processing time: ${modelInfo['processingTime'] ?? 0} milliseconds',
-            style: pw.TextStyle(font: font, fontSize: PDFSizes.xsmallFontSize, color: PdfColors.grey600),
+            style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey600),
           ),
-
-          if (modelInfo.containsKey('endpoint'))
-            pw.Text(
-              '- API endpoint: ${modelInfo['endpoint']}',
-              style: pw.TextStyle(font: font, fontSize: PDFSizes.xsmallFontSize, color: PdfColors.grey600),
-            ),
         ],
       ),
     );
@@ -813,38 +882,40 @@ class PDFService {
 
   static pw.Widget _buildFooter(pw.Font font) {
     return pw.Container(
-      padding: const pw.EdgeInsets.only(top: PDFSizes.sectionSpacing),
+      width: 550,
+      padding: const pw.EdgeInsets.only(top: 12),
       decoration: pw.BoxDecoration(
         border: pw.Border(top: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
       ),
       child: pw.Column(
+        mainAxisSize: pw.MainAxisSize.min,
         children: [
           pw.Text(
             'IMPORTANT NOTES',
             style: pw.TextStyle(
               font: font,
-              fontSize: PDFSizes.smallFontSize,
+              fontSize: 10,
               fontWeight: pw.FontWeight.bold,
               color: AppColorsPDF.primaryBlue,
             ),
           ),
-          pw.SizedBox(height: PDFSizes.smallSpacing),
+          pw.SizedBox(height: 6),
           pw.Text(
             '- This report was automatically generated by BioAlga AI system\n'
                 '- Results are for research and educational purposes only\n'
-                '- Consultation with specialists is recommended for practical applications\n'
-                '- Cloud-based AI models ensure consistent and up-to-date analysis',
+                '- Consultation with specialists is recommended for practical applications',
             style: pw.TextStyle(
               font: font,
-              fontSize: PDFSizes.xsmallFontSize,
+              fontSize: 8,
               color: PdfColors.grey600,
               lineSpacing: 1.2,
             ),
+            softWrap: true,
           ),
-          pw.SizedBox(height: PDFSizes.mediumSpacing),
+          pw.SizedBox(height: 8),
           pw.Text(
             '(c) ${DateTime.now().year} BioAlga - All Rights Reserved',
-            style: pw.TextStyle(fontSize: PDFSizes.xsmallFontSize, color: PdfColors.grey500),
+            style: pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
           ),
         ],
       ),
@@ -856,50 +927,42 @@ class PDFService {
   static pw.Widget _buildHistoryTitle(Map<String, dynamic> historyData, pw.Font font) {
     final isToxic = historyData['isToxic'] == true;
     final name = historyData['algaeType'] ?? 'Unknown';
-    final arabicName = historyData['arabicName'] ?? '';
+    // تم إزالة متغير arabicName
 
     return pw.Container(
-      width: double.infinity,
-      padding: const pw.EdgeInsets.all(PDFSizes.cardPaddingLarge),
+      width: 550,
+      padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
         color: isToxic ? AppColorsPDF.errorBackground : AppColorsPDF.backgroundLight,
-        borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
+        borderRadius: pw.BorderRadius.circular(8),
         border: pw.Border.all(color: isToxic ? AppColorsPDF.errorBorder : AppColorsPDF.accentGreen, width: 2),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.center,
+        mainAxisSize: pw.MainAxisSize.min,
         children: [
-          if (arabicName.isNotEmpty)
-            pw.Text(
-              arabicName,
-              style: pw.TextStyle(
-                font: font,
-                fontSize: 24,
-                fontWeight: pw.FontWeight.bold,
-                color: AppColorsPDF.primaryBlue,
-              ),
-            ),
+          // تم إزالة الاسم العربي
           pw.Text(
             name,
             style: pw.TextStyle(
               font: font,
-              fontSize: 16,
+              fontSize: 14,
               fontStyle: pw.FontStyle.italic,
               color: PdfColors.grey700,
             ),
           ),
-          pw.SizedBox(height: PDFSizes.smallSpacing),
+          pw.SizedBox(height: 6),
           pw.Container(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: pw.BoxDecoration(
               color: isToxic ? AppColorsPDF.errorText : AppColorsPDF.successText,
               borderRadius: pw.BorderRadius.circular(20),
             ),
             child: pw.Text(
-              isToxic ? 'TOXIC SPECIES (Archived)' : 'NON-TOXIC (Archived)',
+              isToxic ? 'TOXIC SPECIES' : 'NON-TOXIC',
               style: pw.TextStyle(
                 font: font,
-                fontSize: 10,
+                fontSize: 8,
                 fontWeight: pw.FontWeight.bold,
                 color: PdfColors.white,
               ),
@@ -909,55 +972,56 @@ class PDFService {
       ),
     );
   }
-
   static pw.Widget _buildHistoryResults(Map<String, dynamic> historyData, pw.Font font) {
     final confidence = ((historyData['confidence'] as num?)?.toDouble() ?? 0.0) * 100;
     final isToxic = historyData['isToxic'] == true;
-    final scientificWarning = historyData['scientificWarning'] ?? 'Toxicity depends on specific strain. Consult expert for verification.';
+    final scientificWarning = historyData['scientificWarning'] ?? '';
 
     return pw.Container(
-      padding: const pw.EdgeInsets.all(PDFSizes.cardPaddingLarge),
+      width: 550,
+      padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
         color: PdfColors.white,
-        borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
+        borderRadius: pw.BorderRadius.circular(8),
         border: pw.Border.all(color: AppColorsPDF.primaryBlue, width: 1),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisSize: pw.MainAxisSize.min,
         children: [
           pw.Text(
             'ANALYSIS RESULTS',
             style: pw.TextStyle(
               font: font,
-              fontSize: PDFSizes.mediumFontSize,
+              fontSize: 12,
               fontWeight: pw.FontWeight.bold,
               color: AppColorsPDF.primaryBlue,
             ),
           ),
           pw.Divider(color: PdfColors.grey400),
-          pw.SizedBox(height: PDFSizes.mediumSpacing),
+          pw.SizedBox(height: 8),
 
           _buildInfoRow('Algae Type', historyData['algaeType'] ?? 'Unknown', font),
           _buildInfoRow('Scientific Name', historyData['scientificName'] ?? 'Unknown', font),
-          if (historyData['arabicName'] != null)
-            _buildInfoRow('Arabic Name', historyData['arabicName'], font),
+          // تم إزالة صف Arabic Name
           _buildInfoRow('Confidence', '${confidence.toStringAsFixed(1)}%', font),
           _buildInfoRow('Status', isToxic ? 'TOXIC - Handle with Care' : 'SAFE', font),
 
           if (scientificWarning.isNotEmpty) ...[
-            pw.SizedBox(height: PDFSizes.mediumSpacing),
+            pw.SizedBox(height: 8),
             pw.Container(
-              padding: const pw.EdgeInsets.all(PDFSizes.cardPadding),
+              width: 520,
+              padding: const pw.EdgeInsets.all(8),
               decoration: pw.BoxDecoration(
                 color: AppColorsPDF.errorBackground,
-                borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
+                borderRadius: pw.BorderRadius.circular(8),
                 border: pw.Border.all(color: AppColorsPDF.errorBorder),
               ),
               child: pw.Text(
                 '! $scientificWarning',
                 style: pw.TextStyle(
                   font: font,
-                  fontSize: PDFSizes.smallFontSize,
+                  fontSize: 9,
                   color: AppColorsPDF.errorText,
                 ),
               ),
@@ -967,81 +1031,32 @@ class PDFService {
       ),
     );
   }
-
-  static pw.Widget _buildHistoryBenefitsAndUses(Map<String, dynamic> historyData, pw.Font font) {
-    return pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Expanded(
-          child: pw.Container(
-            padding: const pw.EdgeInsets.all(PDFSizes.cardPadding),
-            decoration: pw.BoxDecoration(
-              color: AppColorsPDF.backgroundLight,
-              borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
-              border: pw.Border.all(color: AppColorsPDF.accentGreen),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text('BENEFITS', style: pw.TextStyle(font: font, fontSize: PDFSizes.mediumFontSize, fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: PDFSizes.smallSpacing),
-                ...(historyData['benefits'] as List).map((benefit) => pw.Padding(
-                  padding: const pw.EdgeInsets.only(bottom: 4),
-                  child: pw.Text('- $benefit', style: pw.TextStyle(font: font, fontSize: PDFSizes.smallFontSize)),
-                )).toList(),
-              ],
-            ),
-          ),
-        ),
-        pw.SizedBox(width: PDFSizes.smallSpacing),
-        pw.Expanded(
-          child: pw.Container(
-            padding: const pw.EdgeInsets.all(PDFSizes.cardPadding),
-            decoration: pw.BoxDecoration(
-              color: AppColorsPDF.backgroundLight,
-              borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
-              border: pw.Border.all(color: AppColorsPDF.lightGreen),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text('APPLICATIONS', style: pw.TextStyle(font: font, fontSize: PDFSizes.mediumFontSize, fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: PDFSizes.smallSpacing),
-                ...(historyData['uses'] as List).map((use) => pw.Padding(
-                  padding: const pw.EdgeInsets.only(bottom: 4),
-                  child: pw.Text('- $use', style: pw.TextStyle(font: font, fontSize: PDFSizes.smallFontSize)),
-                )).toList(),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   static pw.Widget _buildHistoryFooter(pw.Font font, Map<String, dynamic> historyData) {
     return pw.Container(
-      padding: const pw.EdgeInsets.all(PDFSizes.cardPadding),
+      width: 550,
+      padding: const pw.EdgeInsets.all(8),
       decoration: pw.BoxDecoration(
         color: PdfColors.grey100,
-        borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
+        borderRadius: pw.BorderRadius.circular(8),
       ),
       child: pw.Column(
+        mainAxisSize: pw.MainAxisSize.min,
         children: [
           pw.Text(
             'NOTE',
-            style: pw.TextStyle(font: font, fontSize: PDFSizes.smallFontSize, fontWeight: pw.FontWeight.bold),
+            style: pw.TextStyle(font: font, fontSize: 10, fontWeight: pw.FontWeight.bold),
           ),
-          pw.SizedBox(height: PDFSizes.smallSpacing),
+          pw.SizedBox(height: 6),
           pw.Text(
             'This report is based on analysis conducted on ${historyData['date']}. Data displayed as recorded during the original analysis.',
-            style: pw.TextStyle(font: font, fontSize: PDFSizes.xsmallFontSize, color: PdfColors.grey600),
+            style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey600),
             textAlign: pw.TextAlign.center,
+            softWrap: true,
           ),
-          pw.SizedBox(height: PDFSizes.mediumSpacing),
+          pw.SizedBox(height: 8),
           pw.Text(
             '(c) ${DateTime.now().year} BioAlga - All Rights Reserved',
-            style: pw.TextStyle(fontSize: PDFSizes.xsmallFontSize, color: PdfColors.grey500),
+            style: pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
           ),
         ],
       ),
@@ -1052,30 +1067,33 @@ class PDFService {
 
   static pw.Widget _buildInfoRow(String label, String value, pw.Font font) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.only(bottom: 6),
+      padding: const pw.EdgeInsets.only(bottom: 4),
       child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisSize: pw.MainAxisSize.min,
         children: [
-          pw.SizedBox(
-            width: 130,
+          pw.Container(
+            width: 120,
             child: pw.Text(
               '$label:',
               style: pw.TextStyle(
                 font: font,
                 fontWeight: pw.FontWeight.bold,
-                fontSize: PDFSizes.smallFontSize,
+                fontSize: 9,
                 color: AppColorsPDF.primaryBlue,
               ),
             ),
           ),
-          pw.Expanded(
+          pw.Container(
+            width: 350,
             child: pw.Text(
               value,
               style: pw.TextStyle(
                 font: font,
-                fontSize: PDFSizes.smallFontSize,
+                fontSize: 9,
                 color: PdfColors.grey700,
               ),
+              softWrap: true,
             ),
           ),
         ],
@@ -1085,38 +1103,40 @@ class PDFService {
 
   static pw.Widget _buildMetricCard(String title, String value, PdfColor color, String subtitle, pw.Font font) {
     return pw.Container(
-      padding: const pw.EdgeInsets.all(PDFSizes.cardPadding),
+      width: 180,
+      padding: const pw.EdgeInsets.all(8),
       decoration: pw.BoxDecoration(
         color: PdfColors.white,
-        borderRadius: pw.BorderRadius.circular(PDFSizes.borderRadius),
+        borderRadius: pw.BorderRadius.circular(6),
         border: pw.Border.all(color: PdfColors.grey300),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.center,
+        mainAxisSize: pw.MainAxisSize.min,
         children: [
           pw.Text(
             title,
             style: pw.TextStyle(
               font: font,
-              fontSize: PDFSizes.xsmallFontSize,
+              fontSize: 8,
               color: PdfColors.grey700,
-            ),
-          ),
-          pw.SizedBox(height: 5),
-          pw.Text(
-            value,
-            style: pw.TextStyle(
-              fontSize: PDFSizes.largeFontSize,
-              fontWeight: pw.FontWeight.bold,
-              color: color,
             ),
           ),
           pw.SizedBox(height: 3),
           pw.Text(
+            value,
+            style: pw.TextStyle(
+              fontSize: 14,
+              fontWeight: pw.FontWeight.bold,
+              color: color,
+            ),
+          ),
+          pw.SizedBox(height: 2),
+          pw.Text(
             subtitle,
             style: pw.TextStyle(
               font: font,
-              fontSize: PDFSizes.xsmallFontSize,
+              fontSize: 7,
               color: PdfColors.grey600,
             ),
           ),
@@ -1160,23 +1180,6 @@ class PDFService {
       'Karenia': 'Kareniaceae',
     };
     return families[algaeName] ?? 'Various';
-  }
-
-  static Map<String, String> _getDetailedAlgaeInfo(String type) {
-    const algaeData = {
-      'Anabaena': {'habitat': 'Freshwater lakes, ponds, slow-moving rivers', 'characteristics': 'Filamentous, forms chains of cells, capable of nitrogen fixation'},
-      'Aphanizomenon': {'habitat': 'Nutrient-rich freshwater systems, lakes, reservoirs', 'characteristics': 'Forms straight or slightly curved filaments, surface blooms'},
-      'Gymnodinium': {'habitat': 'Marine and brackish waters worldwide', 'characteristics': 'Unarmored dinoflagellate, two flagella for movement'},
-      'Karenia': {'habitat': 'Coastal marine waters, warm temperate to tropical regions', 'characteristics': 'Golden-brown color, unarmored, photosynthetic'},
-      'Microcystis': {'habitat': 'Nutrient-rich freshwater lakes worldwide', 'characteristics': 'Forms irregular colonies, gas vesicles for buoyancy'},
-      'Noctiluca': {'habitat': 'Coastal marine waters worldwide', 'characteristics': 'Large spherical cells, bioluminescent, heterotrophic'},
-      'Nodularia': {'habitat': 'Brackish waters, estuaries, Baltic Sea', 'characteristics': 'Straight filaments, barrel-shaped cells'},
-      'Nostoc': {'habitat': 'Diverse habitats including freshwater, terrestrial', 'characteristics': 'Forms gelatinous colonies, nitrogen-fixing'},
-      'Oscillatoria': {'habitat': 'Freshwater systems, wastewater treatment plants', 'characteristics': 'Long straight filaments, gliding movement'},
-      'Prorocentrum': {'habitat': 'Coastal marine waters, coral reefs', 'characteristics': 'Armored with protective plates, photosynthetic'},
-      'Skeletonema': {'habitat': 'Coastal and oceanic waters worldwide', 'characteristics': 'Forms long chains, cylindrical cells'},
-    };
-    return algaeData[type] ?? {'habitat': 'Various aquatic environments', 'characteristics': 'Aquatic photosynthetic organism'};
   }
 
   static String _twoDigits(int n) => n >= 10 ? '$n' : '0$n';

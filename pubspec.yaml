@@ -13,7 +13,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   image_picker: ^1.2.0
   shared_preferences: ^2.5.3
-  http: ^1.1.0
+  http: ^1.6.0
   path_provider: ^2.1.5
   path: ^1.8.3
   printing: ^5.14.2
@@ -21,7 +21,7 @@ dependencies:
   open_file: ^3.5.10
   intl: ^0.20.2
   bidi: ^2.0.13
-  mime: ^1.0.6  # ✅ جديد: لفحص أنواع الملفات
+  mime: ^1.0.6
   google_fonts: ^8.0.2
   url_launcher: ^6.3.2
 
@@ -34,11 +34,20 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
   assets:
     - assets/images/App_Logo.png
-    - assets/fonts/Cairo-Regular.ttf
-    # ✅ تم حذف assets/models/ لأننا لا نستخدم النموذج المحلي
+    - assets/images/anabaena.png
+    - assets/images/aphanizomenon.png
+    - assets/images/microcystis.png
+    - assets/images/nodularia.png
+    - assets/images/nostoc.png
+    - assets/images/oscillatoria.png
+    - assets/images/gymnodinium.png
+    - assets/images/karenia.png
+    - assets/images/prorocentrum.png
+    - assets/images/noctiluca.png
+    - assets/images/Skeletonema.png
+    - assets/images/Nontoxic.png
 
   fonts:
     - family: Cairo
