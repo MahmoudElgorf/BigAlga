@@ -9,6 +9,12 @@ class HistoryService {
   factory HistoryService() => _instance;
   HistoryService._internal();
 
+  // Keys for SharedPreferences
+  static const String _analysisHistoryKey = 'analysis_history';
+  static const String _chatHistoryKey = 'chat_history';
+
+  // ==================== ANALYSIS HISTORY ====================
+
   static Future<void> saveAnalysis(Map<String, dynamic> analysis) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -20,9 +26,8 @@ class HistoryService {
         history.removeLast();
       }
 
-      // حفظ في SharedPreferences
       final historyJson = json.encode(history);
-      await prefs.setString(AppConstants.historyKey, historyJson);
+      await prefs.setString(_analysisHistoryKey, historyJson);
     } catch (e) {
       print('Error saving analysis: $e');
     }
@@ -31,16 +36,15 @@ class HistoryService {
   static Future<List<Map<String, dynamic>>> getAnalysisHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final historyJson = prefs.getString(AppConstants.historyKey);
+      final historyJson = prefs.getString(_analysisHistoryKey);
 
       if (historyJson != null) {
         final List<dynamic> historyList = json.decode(historyJson);
         return historyList.map((item) => Map<String, dynamic>.from(item)).toList();
       }
     } catch (e) {
-      print('Error loading history: $e');
+      print('Error loading analysis history: $e');
     }
-
     return [];
   }
 
@@ -51,35 +55,65 @@ class HistoryService {
 
       final prefs = await SharedPreferences.getInstance();
       final historyJson = json.encode(history);
-      await prefs.setString(AppConstants.historyKey, historyJson);
+      await prefs.setString(_analysisHistoryKey, historyJson);
     } catch (e) {
       print('Error deleting analysis: $e');
     }
   }
 
-  // في history_service.dart أضف:
+  static Future<void> clearAllHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_analysisHistoryKey);
+    } catch (e) {
+      print('Error clearing analysis history: $e');
+    }
+  }
 
-  static const String _chatHistoryKey = 'chat_history';
+  // ==================== CHAT HISTORY ====================
 
   static Future<void> saveChatConversation({
     required String algaeType,
     required Map<String, dynamic>? classificationResult,
     required List<Map<String, dynamic>> messages,
+    String? analysisId,  // المعرف الفريد للتحليل المرتبط بهذا الشات
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final chatHistory = await getChatHistory();
 
+      // Serialize messages properly
+      final serializedMessages = messages.map((msg) {
+        return {
+          'text': msg['text']?.toString() ?? '',
+          'isUser': msg['isUser'] == true,
+          'timestamp': msg['timestamp']?.toString() ?? DateTime.now().toIso8601String(),
+          'recommendations': msg['recommendations'] is List
+              ? List<String>.from(msg['recommendations'])
+              : [],
+          'isError': msg['isError'] == true,
+        };
+      }).toList();
+
+      final chatId = analysisId ?? '${algaeType}_${DateTime.now().millisecondsSinceEpoch}';
+      final now = DateTime.now();
+
       final newChat = {
-        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+        'id': chatId,
         'algaeType': algaeType,
         'classificationResult': classificationResult,
-        'messages': messages,
-        'messageCount': messages.length,
-        'lastMessage': messages.last['text'],
-        'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-        'time': DateFormat('HH:mm').format(DateTime.now()),
+        'messages': serializedMessages,
+        'messageCount': serializedMessages.length,
+        'lastMessage': serializedMessages.isNotEmpty
+            ? (serializedMessages.last['text'] ?? 'No messages')
+            : 'No messages',
+        'date': DateFormat('yyyy-MM-dd').format(now),
+        'time': DateFormat('HH:mm').format(now),
+        'timestamp': now.millisecondsSinceEpoch,
       };
+
+      // Remove existing chat with same ID (for update)
+      chatHistory.removeWhere((chat) => chat['id'] == chatId);
 
       chatHistory.insert(0, newChat);
 
@@ -99,12 +133,68 @@ class HistoryService {
       final prefs = await SharedPreferences.getInstance();
       final String? data = prefs.getString(_chatHistoryKey);
       if (data != null) {
-        return List<Map<String, dynamic>>.from(json.decode(data));
+        List<dynamic> decoded = json.decode(data);
+        return decoded.map((item) => Map<String, dynamic>.from(item)).toList();
       }
     } catch (e) {
       print('Error loading chat history: $e');
     }
     return [];
+  }
+
+  static Future<Map<String, dynamic>?> getChatByAnalysisId(String analysisId) async {
+    try {
+      final chats = await getChatHistory();
+      return chats.firstWhere(
+            (chat) => chat['id'] == analysisId,
+        orElse: () => {},
+      );
+    } catch (e) {
+      print('Error getting chat by analysis ID: $e');
+      return null;
+    }
+  }
+
+  static Future<void> updateChat(String chatId, List<Map<String, dynamic>> messages) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final chatHistory = await getChatHistory();
+
+      final index = chatHistory.indexWhere((chat) => chat['id'] == chatId);
+
+      if (index != -1) {
+        final serializedMessages = messages.map((msg) {
+          return {
+            'text': msg['text']?.toString() ?? '',
+            'isUser': msg['isUser'] == true,
+            'timestamp': msg['timestamp']?.toString() ?? DateTime.now().toIso8601String(),
+            'recommendations': msg['recommendations'] is List
+                ? List<String>.from(msg['recommendations'])
+                : [],
+            'isError': msg['isError'] == true,
+          };
+        }).toList();
+
+        chatHistory[index] = {
+          ...chatHistory[index],
+          'messages': serializedMessages,
+          'messageCount': serializedMessages.length,
+          'lastMessage': serializedMessages.isNotEmpty
+              ? (serializedMessages.last['text'] ?? 'No messages')
+              : 'No messages',
+          'time': DateFormat('HH:mm').format(DateTime.now()),
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        };
+
+        // Move to top
+        final updatedChat = chatHistory.removeAt(index);
+        chatHistory.insert(0, updatedChat);
+
+        await prefs.setString(_chatHistoryKey, json.encode(chatHistory));
+      }
+    } catch (e) {
+      print('Error updating chat: $e');
+    }
   }
 
   static Future<void> deleteChat(String id) async {
@@ -127,16 +217,40 @@ class HistoryService {
     }
   }
 
-  static Future<void> clearAllHistory() async {
+  static Future<void> deleteChatByAnalysisId(String analysisId) async {
     try {
+      final chats = await getChatHistory();
+      chats.removeWhere((chat) => chat['id'] == analysisId);
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(AppConstants.historyKey);
+      await prefs.setString(_chatHistoryKey, json.encode(chats));
     } catch (e) {
-      print('Error clearing history: $e');
+      print('Error deleting chat by analysis ID: $e');
     }
   }
 
+  // ==================== UTILITIES ====================
+
   static String generateId() {
     return DateTime.now().millisecondsSinceEpoch.toString();
+  }
+
+  static Future<void> clearAllData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_analysisHistoryKey);
+      await prefs.remove(_chatHistoryKey);
+    } catch (e) {
+      print('Error clearing all data: $e');
+    }
+  }
+
+  static Future<int> getTotalAnalysesCount() async {
+    final history = await getAnalysisHistory();
+    return history.length;
+  }
+
+  static Future<int> getTotalChatsCount() async {
+    final chats = await getChatHistory();
+    return chats.length;
   }
 }

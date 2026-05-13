@@ -62,13 +62,13 @@ class _ResultsPageState extends State<ResultsPage> {
   void _initializeWithPreloadedResult() {
     final normalizedResult = _normalizeResultConfidence(widget.result!);
 
-    // Check confidence threshold
+    // Check confidence threshold - prevent saving if below 90%
     if (!_isConfidenceAcceptable(normalizedResult.confidence)) {
       setState(() {
         _error = _buildLowConfidenceMessage(normalizedResult.confidence);
         _isLoading = false;
       });
-      return;
+      return;  // Don't save to history
     }
 
     setState(() {
@@ -87,13 +87,13 @@ class _ResultsPageState extends State<ResultsPage> {
 
       if (!mounted) return;
 
-      // Check confidence threshold
+      // Check confidence threshold - prevent saving if below 90%
       if (!_isConfidenceAcceptable(normalizedResult.confidence)) {
         setState(() {
           _error = _buildLowConfidenceMessage(normalizedResult.confidence);
           _isLoading = false;
         });
-        return;
+        return;  // Don't save to history
       }
 
       setState(() {
@@ -118,7 +118,7 @@ class _ResultsPageState extends State<ResultsPage> {
 
   String _buildLowConfidenceMessage(double confidence) {
     final percentage = (confidence * 100).toStringAsFixed(1);
-    return 'Low confidence detection ($percentage%). The system could not identify the algae with sufficient certainty. Please capture a clearer image with better lighting, proper focus, and ensure the algae is centered in the frame.';
+    return 'Low confidence detection. The system could not identify the algae with sufficient certainty. Please capture a clearer image with better lighting, proper focus, and ensure the algae is centered in the frame.';
   }
 
   double _getNormalizedConfidence(double originalConfidence) {
@@ -155,6 +155,7 @@ class _ResultsPageState extends State<ResultsPage> {
     final normalizedConfidence = _getNormalizedConfidence(original.confidence);
 
     return AlgaeResult(
+      id: original.id,
       name: original.name,
       scientificName: original.scientificName,
       confidence: normalizedConfidence,
@@ -254,6 +255,7 @@ class _ResultsPageState extends State<ResultsPage> {
         builder: (context) => ChatAssistantScreen(
           algaeType: _result!.name,
           classificationResult: _result!.toJson(),
+          analysisId: _result?.id,
         ),
       ),
     );
@@ -398,17 +400,6 @@ class _ResultsPageState extends State<ResultsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                  ),
-                  child: const Text(ButtonStrings.retry),
-                ),
                 const SizedBox(width: 16),
                 OutlinedButton(
                   onPressed: () => Navigator.popUntil(

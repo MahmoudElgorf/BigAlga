@@ -9,13 +9,15 @@ import 'package:bioalga/core/constants/constants.dart';
 class ChatAssistantScreen extends StatefulWidget {
   final String algaeType;
   final Map<String, dynamic>? classificationResult;
-  final List<Map<String, dynamic>>? initialMessages;  // جديد
+  final List<Map<String, dynamic>>? initialMessages;
+  final String? analysisId;  // إضافة معرف التحليل الفريد
 
   const ChatAssistantScreen({
     Key? key,
     required this.algaeType,
     this.classificationResult,
-    this.initialMessages,  // جديد
+    this.initialMessages,
+    this.analysisId,  // جديد
   }) : super(key: key);
 
   @override
@@ -43,7 +45,6 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
   void initState() {
     super.initState();
 
-    // استعادة المحادثة السابقة إذا وجدت
     if (widget.initialMessages != null && widget.initialMessages!.isNotEmpty) {
       for (var msg in widget.initialMessages!) {
         _messages.add(ChatMessage(
@@ -546,9 +547,10 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
+// lib/features/results/presentation/pages/chat_assistant_screen.dart
+
   @override
   void dispose() {
-    // Save chat conversation to history
     if (_messages.length > 1) {
       final messagesToSave = _messages.map((msg) => {
         'text': msg.text,
@@ -562,6 +564,7 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
         algaeType: widget.algaeType,
         classificationResult: widget.classificationResult,
         messages: messagesToSave,
+        analysisId: widget.analysisId,
       );
     }
 

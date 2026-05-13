@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 class AlgaeResult {
+  final String id;
   final String name;
   final String scientificName;
   final double confidence;
@@ -22,6 +23,7 @@ class AlgaeResult {
   final String sellable;
 
   AlgaeResult({
+    required this.id,
     required this.name,
     required this.scientificName,
     required this.confidence,
@@ -42,6 +44,7 @@ class AlgaeResult {
 
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'name': name,
       'scientificName': scientificName,
       'confidence': confidence,
@@ -62,6 +65,7 @@ class AlgaeResult {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'name': name,
       'scientificName': scientificName,
       'confidence': confidence,
@@ -83,6 +87,7 @@ class AlgaeResult {
 
   factory AlgaeResult.empty() {
     return AlgaeResult(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: 'Unknown',
       scientificName: 'Unknown spp.',
       confidence: 0.0,
@@ -499,6 +504,7 @@ AlgaeResult createAlgaeResultFromPrediction(
   final data = getAlgaeData(predictedName);
 
   return AlgaeResult(
+    id: DateTime.now().millisecondsSinceEpoch.toString(),
     name: predictedName,
     scientificName: data['scientificName'] as String,
     confidence: confidence,

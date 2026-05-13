@@ -2,7 +2,6 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:mime/mime.dart';
 import '../../data/models/algae_model.dart';
 
 class MLService {
@@ -85,8 +84,9 @@ class MLService {
           }
         ];
 
-        // Build AlgaeResult with ALL fields
+        // Build AlgaeResult with ALL fields including id
         return AlgaeResult(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),  // إضافة id
           name: algaeName,
           scientificName: algaeInfo['scientificName'] as String,
           confidence: predictionResponse.confidence,
@@ -102,7 +102,6 @@ class MLService {
           dateTime: DateTime.now(),
           isToxic: algaeInfo['isToxic'] as bool,
           toxicityWarning: algaeInfo['toxicityWarning'] as String,
-          // NEW FIELDS:
           scientificWarning: algaeInfo['scientificWarning'] as String,
           category: algaeInfo['category'] as String,
           potentialToxins: (algaeInfo['potentialToxins'] as List<dynamic>).cast<String>().toList(),
@@ -119,19 +118,18 @@ class MLService {
   }
 
   // ================= CLASSIFY WITH FALLBACK =================
-  // استخدام البيانات المحلية في حالة فشل الاتصال بالـ API
   Future<AlgaeResult> classifyImageWithFallback(File imageFile) async {
     try {
       return await classifyImage(imageFile);
     } catch (e) {
       print('API failed, using fallback: $e');
-      // في حالة فشل الـ API، نرجع نتيجة افتراضية
       return _getFallbackResult();
     }
   }
 
   AlgaeResult _getFallbackResult() {
     return AlgaeResult(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),  // إضافة id
       name: 'Unknown',
       scientificName: 'Unknown spp.',
       confidence: 0.0,

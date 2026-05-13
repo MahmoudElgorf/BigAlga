@@ -111,6 +111,8 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
     }
   }
 
+// lib/features/home/presentation/widgets/history_drawer.dart
+
   AlgaeResult _createAlgaeResultFromHistory(Map<String, dynamic> analysis) {
     final name = analysis['algaeType'] ?? 'Unknown';
     final scientificName = analysis['scientificName'] ?? '$name spp.';
@@ -142,6 +144,7 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
     final sellable = analysis['sellable'] ?? _getDefaultSellable(name);
 
     return AlgaeResult(
+      id: analysis['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),  // ✅ أضف هذا
       name: name,
       scientificName: scientificName,
       confidence: confidence,
@@ -164,7 +167,6 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
       sellable: sellable,
     );
   }
-
   List<String> _getDefaultPotentialToxins(String name) {
     switch (name) {
       case 'Microcystis':
@@ -465,6 +467,10 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
                     // Header with image and title
                     Row(
                       children: [
+                        // lib/features/home/presentation/widgets/history_drawer.dart
+
+// ابحث عن Container الخاص بالصورة في دالة _buildHistoryCard واستبدله بهذا:
+
                         Container(
                           width: 50,
                           height: 50,
@@ -481,9 +487,40 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
                                 : null,
                           ),
                           child: isNontoxic
-                              ? Image.asset("assets/images/Nontoxic.png")
+                              ? ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.asset(
+                              "assets/images/Nontoxic.png",
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    color: AppColors.successGreen.withOpacity(0.2),
+                                  ),
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.verified,
+                                      size: 28,
+                                      color: AppColors.successGreen,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          )
                               : (imagePath == 'assets/images/Nontoxic.png'
-                              ? Image.asset("assets/images/Nontoxic.png")
+                              ? ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.asset(
+                              "assets/images/Nontoxic.png",
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                            ),
+                          )
                               : null),
                         ),
                         const SizedBox(width: 12),
