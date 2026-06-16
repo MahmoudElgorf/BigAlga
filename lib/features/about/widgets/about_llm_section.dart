@@ -1,10 +1,10 @@
-// lib/features/about/widgets/about_llm_section.dart
+/// LLM AI Assistant section widget explaining the conversational AI capabilities
 import 'package:bioalga/core/constants/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AboutLlmSection extends StatelessWidget {
-  const AboutLlmSection({Key? key}) : super(key: key);
+  const AboutLlmSection({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +29,7 @@ class AboutLlmSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'AI ASSISTANT (LLM)',
+                AppStrings.aiAssistantTitle,
                 style: GoogleFonts.poppins(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
@@ -39,7 +39,7 @@ class AboutLlmSection extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(
-                'BioAlga integrates a conversational AI assistant powered by large language models (GPT-4o-mini). It provides accurate, science-based answers about algae species, toxicity, environmental impact, and commercial applications.',
+                AppStrings.aiAssistantDescription,
                 style: GoogleFonts.roboto(
                   fontSize: 14,
                   height: 1.5,
@@ -47,30 +47,30 @@ class AboutLlmSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              _buildSubsectionTitle('Capabilities'),
+              _buildSubsectionTitle(AppStrings.capabilities),
               _buildBulletList([
-                'Answer natural language questions about any supported algae species',
-                'Provide detailed toxicity warnings and health effect explanations',
-                'Assess commercial viability and CO2 sequestration potential',
-                'Explain environmental impact, habitat, and ecological role',
-                'Give safety instructions and handling recommendations',
-                'Support both English and Arabic',
-                'Maintain conversation context for up to 15 messages',
+                AppStrings.capabilityAnswerQuestions,
+                AppStrings.capabilityToxicityWarnings,
+                AppStrings.capabilityCommercialViability,
+                AppStrings.capabilityEnvironmentalImpact,
+                AppStrings.capabilitySafetyInstructions,
+                AppStrings.capabilityBilingual,
+                AppStrings.capabilityConversationContext,
               ]),
               const SizedBox(height: 12),
-              _buildSubsectionTitle('Usage Guidelines'),
+              _buildSubsectionTitle(AppStrings.usageGuidelines),
               _buildBulletList([
-                'Tap the AI Assistant button on the results page',
-                'Ask specific questions for best results',
-                'The assistant focuses on algae and related fields (phycology, aquatic biology, toxins)',
-                'Completely unrelated topics will be politely redirected',
+                AppStrings.guidelineTapAssistant,
+                AppStrings.guidelineSpecificQuestions,
+                AppStrings.guidelineFocusArea,
+                AppStrings.guidelineRedirect,
               ]),
               const SizedBox(height: 12),
-              _buildSubsectionTitle('Limitations'),
+              _buildSubsectionTitle(AppStrings.limitations),
               _buildBulletList([
-                'First response may be delayed if the backend service is on a free hosting plan (cold start up to 50 seconds)',
-                'Rare or poorly documented species may lack detailed information',
-                'The AI provides scientific information but cannot replace professional medical or environmental advice',
+                AppStrings.limitationColdStart,
+                AppStrings.limitationRareSpecies,
+                AppStrings.limitationProfessionalAdvice,
               ]),
             ],
           ),

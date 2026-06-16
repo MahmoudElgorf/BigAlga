@@ -1,22 +1,22 @@
-// lib/features/about/presentation/widgets/about_features_section.dart
+/// Features section widget displaying app key features
 import 'package:bioalga/core/constants/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AboutFeaturesSection extends StatelessWidget {
-  const AboutFeaturesSection({Key? key}) : super(key: key);
+  const AboutFeaturesSection({super.key});
 
   @override
   Widget build(BuildContext context) {
     final features = [
-      'AI-powered algae classification',
-      'Real-time image analysis',
-      'Comprehensive algae encyclopedia',
-      'Toxicity warnings and safety info',
-      'Commercial viability assessment',
-      'CO₂ sequestration calculator',
-      'PDF report generation',
-      'Analysis history tracking',
+      AppStrings.featureAiClassification,
+      AppStrings.featureRealTimeAnalysis,
+      AppStrings.featureComprehensiveEncyclopedia,
+      AppStrings.featureToxicityWarnings,
+      AppStrings.featureCommercialViability,
+      AppStrings.featureCo2Sequestration,
+      AppStrings.featurePdfReport,
+      AppStrings.featureHistoryTracking,
     ];
 
     return Card(
@@ -28,7 +28,7 @@ class AboutFeaturesSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'KEY FEATURES',
+              AppStrings.keyFeatures,
               style: GoogleFonts.poppins(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,

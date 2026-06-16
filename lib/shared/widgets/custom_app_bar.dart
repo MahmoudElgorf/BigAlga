@@ -1,3 +1,4 @@
+/// Custom app bar with rounded bottom corners
 import 'package:flutter/material.dart';
 import '../../core/constants/constants.dart';
 
@@ -7,11 +8,11 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget>? actions;
 
   const CustomAppBar({
-    Key? key,
+    super.key,
     required this.title,
     this.showBackButton = true,
     this.actions,
-  }) : super(key: key);
+  });
 
   @override
   Size get preferredSize => const Size.fromHeight(80);

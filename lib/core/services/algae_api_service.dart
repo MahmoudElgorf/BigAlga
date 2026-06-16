@@ -1,6 +1,8 @@
+/// Algae API service for chat, info, toxicity and analysis
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:bioalga/core/constants/constants.dart';
+
 class AlgaeApiService {
   final http.Client _client = http.Client();
 
@@ -8,6 +10,7 @@ class AlgaeApiService {
     ApiConstants.contentType: ApiConstants.applicationJson,
   };
 
+  /// Check if API server is healthy and reachable
   Future<bool> healthCheck() async {
     try {
       final response = await _client
@@ -15,14 +18,13 @@ class AlgaeApiService {
         Uri.parse('${ApiConstants.baseUrl}${ApiConstants.health}'),
       )
           .timeout(ApiConstants.readTimeout);
-
       return response.statusCode == 200;
     } catch (e) {
-      print('Health check failed: $e');
       return false;
     }
   }
 
+  /// Send a chat message with algae context to the AI assistant
   Future<Map<String, dynamic>> chat({
     required String algaeType,
     required String userQuestion,
@@ -51,11 +53,11 @@ class AlgaeApiService {
         throw Exception('Chat failed: ${response.statusCode}');
       }
     } catch (e) {
-      print('Chat error: $e');
       rethrow;
     }
   }
 
+  /// Fetch all available algae types from the API
   Future<List<String>> getAlgaeTypes() async {
     try {
       final response = await _client
@@ -67,15 +69,14 @@ class AlgaeApiService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return List<String>.from(data['types']);
-      } else {
-        return [];
       }
+      return [];
     } catch (e) {
-      print('Get algae types error: $e');
       return [];
     }
   }
 
+  /// Get detailed information about a specific algae type
   Future<Map<String, dynamic>> getAlgaeInfo({
     required String algaeType,
     bool includeSources = true,
@@ -100,16 +101,17 @@ class AlgaeApiService {
         throw Exception('Get algae info failed: ${response.statusCode}');
       }
     } catch (e) {
-      print('Get algae info error: $e');
       rethrow;
     }
   }
 
+  /// Get toxicity level and safety information for a specific algae
   Future<Map<String, dynamic>> getToxicityLevel(String algaeType) async {
     try {
       final response = await _client
           .get(
-        Uri.parse('${ApiConstants.baseUrl}${ApiConstants.algaeToxicity}$algaeType'),
+        Uri.parse(
+            '${ApiConstants.baseUrl}${ApiConstants.algaeToxicity}$algaeType'),
       )
           .timeout(ApiConstants.readTimeout);
 
@@ -119,11 +121,11 @@ class AlgaeApiService {
         throw Exception('Get toxicity failed: ${response.statusCode}');
       }
     } catch (e) {
-      print('Get toxicity error: $e');
       rethrow;
     }
   }
 
+  /// Enhance classification results with additional AI analysis
   Future<Map<String, dynamic>> enhanceResults({
     required String algaeType,
     required Map<String, dynamic> currentResult,
@@ -150,11 +152,11 @@ class AlgaeApiService {
         throw Exception('Enhance results failed: ${response.statusCode}');
       }
     } catch (e) {
-      print('Enhance results error: $e');
       rethrow;
     }
   }
 
+  /// Generate a concise summary of the analysis results
   Future<String> generateSummary({
     required String algaeType,
     required Map<String, dynamic> currentResult,
@@ -180,11 +182,11 @@ class AlgaeApiService {
         throw Exception('Generate summary failed: ${response.statusCode}');
       }
     } catch (e) {
-      print('Generate summary error: $e');
       return 'Unable to generate summary';
     }
   }
 
+  /// Compare multiple algae types and get differences/similarities
   Future<Map<String, dynamic>> compareAlgaeTypes(List<String> algaeTypes) async {
     try {
       final response = await _client
@@ -201,11 +203,11 @@ class AlgaeApiService {
         throw Exception('Compare failed: ${response.statusCode}');
       }
     } catch (e) {
-      print('Compare error: $e');
       rethrow;
     }
   }
 
+  /// Close the HTTP client and release resources
   void dispose() {
     _client.close();
   }

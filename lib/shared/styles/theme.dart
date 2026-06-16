@@ -1,3 +1,4 @@
+/// Marine theme for BioAlga application
 import 'package:flutter/material.dart';
 import '../../core/constants/constants.dart';
 

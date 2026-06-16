@@ -1,10 +1,10 @@
-// lib/features/about/presentation/widgets/about_developer_section.dart
+/// Developer section widget displaying team information
 import 'package:bioalga/core/constants/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AboutDeveloperSection extends StatelessWidget {
-  const AboutDeveloperSection({Key? key}) : super(key: key);
+  const AboutDeveloperSection({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +43,7 @@ class AboutDeveloperSection extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                "DEVELOPED BY",
+                AppStrings.developedBy,
                 style: GoogleFonts.poppins(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -53,7 +53,7 @@ class AboutDeveloperSection extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                "NextStep Team",
+                AppStrings.nextStepTeam,
                 style: GoogleFonts.poppins(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,

@@ -1,4 +1,4 @@
-// lib/features/about/presentation/widgets/about_section_card.dart
+/// Reusable section card widget for displaying title and content
 import 'package:bioalga/core/constants/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,10 +8,10 @@ class AboutSectionCard extends StatelessWidget {
   final String content;
 
   const AboutSectionCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.content,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

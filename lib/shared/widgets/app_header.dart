@@ -1,4 +1,4 @@
-// lib/shared/widgets/app_header.dart
+/// App header widget with gradient background and decorative elements
 import 'package:flutter/material.dart';
 import 'package:bioalga/core/constants/constants.dart';
 
@@ -16,7 +16,7 @@ class AppHeader extends StatelessWidget {
   final bool centerTitle;
 
   const AppHeader({
-    Key? key,
+    super.key,
     required this.title,
     this.subtitle,
     this.isToxic = false,
@@ -28,7 +28,7 @@ class AppHeader extends StatelessWidget {
     this.actions,
     this.leading,
     this.centerTitle = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -56,25 +56,19 @@ class AppHeader extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Background decorative elements
           ..._buildDecorativeElements(),
-
-          // Soft wave at bottom
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: _buildBottomWave(),
           ),
-
-          // Content
           SafeArea(
             bottom: false,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // App Bar area
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   child: Row(
@@ -82,13 +76,10 @@ class AppHeader extends StatelessWidget {
                         ? MainAxisAlignment.center
                         : MainAxisAlignment.spaceBetween,
                     children: [
-                      // Left side - Back button or leading
                       leading ??
                           (showBackButton
                               ? _buildBackButton(context)
                               : const SizedBox(width: 40)),
-
-                      // Title in center if needed
                       if (centerTitle)
                         Expanded(
                           child: Center(
@@ -105,8 +96,6 @@ class AppHeader extends StatelessWidget {
                             ),
                           ),
                         ),
-
-                      // Right side - Actions
                       actions != null
                           ? Row(children: actions!)
                           : (action != null
@@ -115,15 +104,12 @@ class AppHeader extends StatelessWidget {
                     ],
                   ),
                 ),
-
-                // Main title section - Flexible content
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Arabic title
                       if (arabicTitle != null && arabicTitle!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 4),
@@ -140,8 +126,6 @@ class AppHeader extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-
-                      // English title
                       Text(
                         title,
                         style: TextStyle(
@@ -155,8 +139,6 @@ class AppHeader extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-
-                      // Scientific name
                       if (scientificTitle != null && scientificTitle!.isNotEmpty) ...[
                         const SizedBox(height: 6),
                         Container(
@@ -177,8 +159,6 @@ class AppHeader extends StatelessWidget {
                           ),
                         ),
                       ],
-
-                      // Subtitle
                       if (subtitle != null && subtitle!.isNotEmpty) ...[
                         const SizedBox(height: 6),
                         Text(
@@ -192,10 +172,7 @@ class AppHeader extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
-
                       const SizedBox(height: 12),
-
-                      // Status badges
                     ],
                   ),
                 ),
@@ -321,7 +298,6 @@ class AppHeader extends StatelessWidget {
   }
 }
 
-// Custom painter for wave effect
 class _WavePainter extends CustomPainter {
   final Color color;
 
@@ -336,12 +312,16 @@ class _WavePainter extends CustomPainter {
     final path = Path();
     path.moveTo(0, size.height);
     path.quadraticBezierTo(
-      size.width * 0.3, size.height - 4,
-      size.width * 0.5, size.height - 6,
+      size.width * 0.3,
+      size.height - 4,
+      size.width * 0.5,
+      size.height - 6,
     );
     path.quadraticBezierTo(
-      size.width * 0.7, size.height - 4,
-      size.width, size.height,
+      size.width * 0.7,
+      size.height - 4,
+      size.width,
+      size.height,
     );
     path.lineTo(size.width, 0);
     path.lineTo(0, 0);

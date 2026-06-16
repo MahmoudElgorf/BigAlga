@@ -1,3 +1,4 @@
+/// Primary button widget with gradient and icon support
 import 'package:flutter/material.dart';
 import '../../core/constants/constants.dart';
 
@@ -8,12 +9,12 @@ class PrimaryButton extends StatelessWidget {
   final Color color;
 
   const PrimaryButton({
-    Key? key,
+    super.key,
     required this.text,
     this.icon,
     required this.onPressed,
     this.color = AppColors.primary,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

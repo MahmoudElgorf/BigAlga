@@ -1,10 +1,14 @@
+/// Loading indicator widget with custom message
 import 'package:flutter/material.dart';
 import '../../core/constants/constants.dart';
 
 class LoadingIndicator extends StatelessWidget {
   final String message;
 
-  const LoadingIndicator({Key? key, this.message = 'جاري التحميل...'}) : super(key: key);
+  const LoadingIndicator({
+    super.key,
+    this.message = AppStrings.loading,
+  });
 
   @override
   Widget build(BuildContext context) {

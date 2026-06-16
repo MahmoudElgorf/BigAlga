@@ -1,4 +1,4 @@
-// lib/features/about/presentation/widgets/about_category_chip.dart
+/// Category chip widget for displaying species count with color coding
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -8,11 +8,11 @@ class AboutCategoryChip extends StatelessWidget {
   final Color color;
 
   const AboutCategoryChip({
-    Key? key,
+    super.key,
     required this.label,
     required this.count,
     required this.color,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

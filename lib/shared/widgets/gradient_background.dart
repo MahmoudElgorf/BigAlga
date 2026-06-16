@@ -1,10 +1,11 @@
+/// Gradient background widget with foam, sand, and aqua colors
 import 'package:flutter/material.dart';
 import '../../core/constants/constants.dart';
 
 class GradientBackground extends StatelessWidget {
   final Widget child;
 
-  const GradientBackground({Key? key, required this.child}) : super(key: key);
+  const GradientBackground({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {

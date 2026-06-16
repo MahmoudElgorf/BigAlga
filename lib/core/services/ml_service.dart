@@ -1,20 +1,21 @@
-// lib/core/services/ml_service.dart
+/// ML service for algae image classification using remote API
 import 'dart:io';
 import 'dart:convert';
+import 'package:bioalga/data/data.dart';
 import 'package:http/http.dart' as http;
+import 'package:bioalga/core/constants/constants.dart';
 import '../../data/models/algae_model.dart';
 
 class MLService {
-  // ================= SINGLETON =================
   static final MLService _instance = MLService._internal();
   factory MLService() => _instance;
   MLService._internal();
 
   bool _isInitialized = false;
   static const String _baseUrl = 'https://algea-image-classififcation.onrender.com';
-  static const String _predictEndpoint = '/predictApi';
+  static const String _predictEndpoint = '/predict';
 
-  // ================= INITIALIZE =================
+  /// Initialize the ML service and check API connection
   Future<void> initModel() async {
     if (_isInitialized) return;
 
@@ -22,16 +23,15 @@ class MLService {
       final response = await http.get(Uri.parse('$_baseUrl/'));
       if (response.statusCode == 200) {
         _isInitialized = true;
-        print('API connected successfully');
       } else {
-        throw Exception('Failed to connect to API');
+        throw Exception(ErrorStrings.failedToConnectToApi);
       }
     } catch (e) {
-      throw Exception('API connection error: $e');
+      throw Exception('${ErrorStrings.apiConnectionError}: $e');
     }
   }
 
-  // ================= CLASSIFY =================
+  /// Classify an algae image using the remote API
   Future<AlgaeResult> classifyImage(File imageFile) async {
     if (!_isInitialized) {
       await initModel();
@@ -40,22 +40,19 @@ class MLService {
     try {
       final startTime = DateTime.now();
 
-      // Create multipart request
       final uri = Uri.parse('$_baseUrl$_predictEndpoint');
       final request = http.MultipartRequest('POST', uri);
 
-      // Add image file
       final stream = http.ByteStream(imageFile.openRead());
       final length = await imageFile.length();
       final multipartFile = http.MultipartFile(
-        'fileup',
+        'image',
         stream,
         length,
         filename: imageFile.path.split('/').last,
       );
       request.files.add(multipartFile);
 
-      // Send request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
@@ -68,31 +65,41 @@ class MLService {
           throw Exception(responseData['error']);
         }
 
-        // Parse API response
-        final predictionResponse = PredictionResponse.fromJson(responseData);
+        final String algaeName = responseData['predicted_class'] ?? AppStrings.unknown;
+        final double confidence = (responseData['confidence'] ?? 0) / 100;
 
-        // Get algae data with full scientific information
-        final algaeName = predictionResponse.prediction;
-        final algaeInfo = getAlgaeData(algaeName);
+        final algaeInfo = _safeGetAlgaeData(algaeName);
 
-        // Prepare all predictions (for future multi-label support)
-        final allPredictions = [
-          {
-            'label': algaeName,
-            'confidence': predictionResponse.confidence,
-            'isToxic': algaeInfo['isToxic'],
+        final List<Map<String, dynamic>> allPredictions = [];
+
+        if (responseData.containsKey('top5') && responseData['top5'] is List) {
+          for (var item in responseData['top5']) {
+            final String className = item['class'] ?? AppStrings.unknown;
+            final double classConfidence = (item['confidence'] ?? 0) / 100;
+            final classInfo = _safeGetAlgaeData(className);
+
+            allPredictions.add({
+              'label': className,
+              'confidence': classConfidence,
+              'isToxic': classInfo['isToxic'],
+            });
           }
-        ];
+        } else {
+          allPredictions.add({
+            'label': algaeName,
+            'confidence': confidence,
+            'isToxic': algaeInfo['isToxic'],
+          });
+        }
 
-        // Build AlgaeResult with ALL fields including id
         return AlgaeResult(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),  // إضافة id
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
           name: algaeName,
-          scientificName: algaeInfo['scientificName'] as String,
-          confidence: predictionResponse.confidence,
-          confidenceLevel: _confidenceLevel(predictionResponse.confidence),
-          benefits: (algaeInfo['benefits'] as List<dynamic>).cast<String>().toList(),
-          uses: (algaeInfo['uses'] as List<dynamic>).cast<String>().toList(),
+          scientificName: algaeInfo['scientificName'],
+          confidence: confidence,
+          confidenceLevel: _confidenceLevel(confidence),
+          benefits: algaeInfo['benefits'],
+          uses: algaeInfo['uses'],
           allPredictions: allPredictions,
           modelInfo: {
             'processingTime': processingTime,
@@ -100,69 +107,101 @@ class MLService {
             'endpoint': _predictEndpoint,
           },
           dateTime: DateTime.now(),
-          isToxic: algaeInfo['isToxic'] as bool,
-          toxicityWarning: algaeInfo['toxicityWarning'] as String,
-          scientificWarning: algaeInfo['scientificWarning'] as String,
-          category: algaeInfo['category'] as String,
-          potentialToxins: (algaeInfo['potentialToxins'] as List<dynamic>).cast<String>().toList(),
-          co2PerKg: (algaeInfo['co2PerKg'] as num).toDouble(),
-          sellable: algaeInfo['sellable'] as String,
+          isToxic: algaeInfo['isToxic'],
+          toxicityWarning: algaeInfo['toxicityWarning'],
+          scientificWarning: algaeInfo['scientificWarning'],
+          category: algaeInfo['category'],
+          potentialToxins: algaeInfo['potentialToxins'],
+          co2PerKg: algaeInfo['co2PerKg'],
+          sellable: algaeInfo['sellable'],
         );
       } else {
-        throw Exception('API request failed with status: ${response.statusCode}');
+        throw Exception('${ErrorStrings.apiRequestFailed}: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error classifying image: $e');
       rethrow;
     }
   }
 
-  // ================= CLASSIFY WITH FALLBACK =================
+  /// Classify image with fallback result if API fails
   Future<AlgaeResult> classifyImageWithFallback(File imageFile) async {
     try {
       return await classifyImage(imageFile);
     } catch (e) {
-      print('API failed, using fallback: $e');
       return _getFallbackResult();
     }
   }
 
+  /// Return a fallback result when API is unavailable
   AlgaeResult _getFallbackResult() {
     return AlgaeResult(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),  // إضافة id
-      name: 'Unknown',
-      scientificName: 'Unknown spp.',
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: AppStrings.unknown,
+      scientificName: AppStrings.unknownSpecies,
       confidence: 0.0,
-      confidenceLevel: 'Not Available',
-      benefits: ['Unable to connect to analysis server'],
-      uses: ['Please check your internet connection and try again'],
+      confidenceLevel: AppStrings.notAvailable,
+      benefits: [ErrorStrings.unableToConnectToAnalysisServer],
+      uses: [ErrorStrings.pleaseCheckInternet],
       allPredictions: [],
-      modelInfo: {'error': 'API connection failed'},
+      modelInfo: {'error': ErrorStrings.apiConnectionFailed},
       dateTime: DateTime.now(),
       isToxic: false,
-      toxicityWarning: 'Analysis unavailable',
-      scientificWarning: 'Could not connect to the classification server. Please check your internet connection.',
-      category: 'Unknown',
+      toxicityWarning: ErrorStrings.analysisUnavailable,
+      scientificWarning: ErrorStrings.pleaseCheckInternet,
+      category: AppStrings.unknown,
       potentialToxins: [],
       co2PerKg: 0.0,
-      sellable: 'Unknown - requires analysis',
+      sellable: AppStrings.unknownRequiresAnalysis,
     );
   }
 
-  // ================= HELPERS =================
-  String _confidenceLevel(double c) {
-    if (c >= 0.9) return 'Very High';
-    if (c >= 0.7) return 'High';
-    if (c >= 0.5) return 'Medium';
-    return 'Low';
+  /// Safely get algae data with fallback for missing values
+  Map<String, dynamic> _safeGetAlgaeData(String name) {
+    try {
+      final data = getAlgaeData(name);
+      return {
+        'scientificName': data['scientificName'] as String? ?? AppStrings.unknownSpecies,
+        'benefits': (data['benefits'] as List<dynamic>?)?.cast<String>() ?? [],
+        'uses': (data['uses'] as List<dynamic>?)?.cast<String>() ?? [],
+        'isToxic': data['isToxic'] as bool? ?? false,
+        'toxicityWarning': data['toxicityWarning'] as String? ?? ErrorStrings.noToxicityInfoAvailable,
+        'scientificWarning': data['scientificWarning'] as String? ?? ErrorStrings.noScientificInfoAvailable,
+        'category': data['category'] as String? ?? AppStrings.unknown,
+        'potentialToxins': (data['potentialToxins'] as List<dynamic>?)?.cast<String>() ?? [],
+        'co2PerKg': (data['co2PerKg'] as num?)?.toDouble() ?? 0.0,
+        'sellable': data['sellable'] as String? ?? AppStrings.unknown,
+      };
+    } catch (e) {
+      return {
+        'scientificName': AppStrings.unknownSpecies,
+        'benefits': [],
+        'uses': [],
+        'isToxic': false,
+        'toxicityWarning': AppStrings.informationNotAvailable,
+        'scientificWarning': AppStrings.informationNotAvailable,
+        'category': AppStrings.unknown,
+        'potentialToxins': [],
+        'co2PerKg': 0.0,
+        'sellable': AppStrings.unknown,
+      };
+    }
   }
 
-  // ================= DISPOSE =================
+  /// Get confidence level string based on confidence value
+  String _confidenceLevel(double c) {
+    if (c >= 0.9) return AppStrings.veryHigh;
+    if (c >= 0.7) return AppStrings.highConfidence;
+    if (c >= 0.5) return AppStrings.medium;
+    if (c >= 0.3) return AppStrings.lowConfidence;
+    return AppStrings.veryLow;
+  }
+
+  /// Dispose and reset initialization state
   void dispose() {
     _isInitialized = false;
   }
 
-  // ================= TEST CONNECTION =================
+  /// Test API connection
   Future<bool> testConnection() async {
     try {
       final response = await http.get(

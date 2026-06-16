@@ -1,3 +1,4 @@
+/// Utility functions for image picking, navigation, snackbars, and file handling
 import 'dart:io';
 import 'package:bioalga/core/constants/constants.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 class AppUtils {
   static final ImagePicker _picker = ImagePicker();
 
+  /// Pick an image from gallery or camera
   static Future<File?> pickImage(ImageSource source) async {
     try {
       final XFile? image = await _picker.pickImage(
@@ -20,11 +22,11 @@ class AppUtils {
       }
       return null;
     } catch (e) {
-      debugPrint('${ErrorStrings.imagePickError}: $e');
       return null;
     }
   }
 
+  /// Navigate to a new page
   static void navigateTo(BuildContext context, Widget page) {
     Navigator.push(
       context,
@@ -32,6 +34,7 @@ class AppUtils {
     );
   }
 
+  /// Show error snackbar
   static void showErrorSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -51,6 +54,7 @@ class AppUtils {
     );
   }
 
+  /// Show success snackbar
   static void showSuccessSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -70,6 +74,7 @@ class AppUtils {
     );
   }
 
+  /// Show API error snackbar with details
   static void showApiErrorSnackBar(BuildContext context, String error) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -105,6 +110,7 @@ class AppUtils {
     );
   }
 
+  /// Show image too large snackbar
   static void showImageTooLargeSnackBar(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -124,20 +130,18 @@ class AppUtils {
     );
   }
 
+  /// Check if image file is valid (exists, readable, within size limit)
   static Future<bool> checkImageFile(File imageFile) async {
     try {
-      // Check file size (max 10MB)
       final fileSize = await imageFile.length();
       if (fileSize > AppSizes.maxFileSize) {
         return false;
       }
 
-      // Check if file exists and is readable
       if (!await imageFile.exists()) {
         return false;
       }
 
-      // Try to read the file to verify it's a valid image
       final bytes = await imageFile.readAsBytes();
       if (bytes.isEmpty) {
         return false;
@@ -145,11 +149,11 @@ class AppUtils {
 
       return true;
     } catch (e) {
-      debugPrint('${ErrorStrings.imageCheckError}: $e');
       return false;
     }
   }
 
+  /// Show connection retry dialog
   static Future<void> showConnectionRetryDialog(
       BuildContext context, {
         required String title,
@@ -197,6 +201,7 @@ class AppUtils {
     );
   }
 
+  /// Format file name (truncate if too long)
   static String formatFileName(String path) {
     final fileName = path.split('/').last;
     if (fileName.length > AppSizes.maxFileNameLength) {
@@ -207,6 +212,7 @@ class AppUtils {
     return fileName;
   }
 
+  /// Check internet connectivity
   static Future<bool> isInternetConnected() async {
     try {
       final result = await InternetAddress.lookup('google.com');
@@ -219,6 +225,7 @@ class AppUtils {
     return false;
   }
 
+  /// Show confirmation dialog
   static void showConfirmationDialog({
     required BuildContext context,
     required String title,
@@ -249,12 +256,14 @@ class AppUtils {
     );
   }
 
+  /// Format file size in human readable format
   static String formatFileSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1048576) return '${(bytes / 1024).toStringAsFixed(1)} KB';
     return '${(bytes / 1048576).toStringAsFixed(1)} MB';
   }
 
+  /// Parse date string to DateTime
   static DateTime? parseDate(String dateString) {
     try {
       return DateTime.tryParse(dateString);
@@ -263,10 +272,12 @@ class AppUtils {
     }
   }
 
+  /// Format DateTime to string
   static String formatDateTime(DateTime dateTime) {
     return '${dateTime.year}-${_twoDigits(dateTime.month)}-${_twoDigits(dateTime.day)} ${_twoDigits(dateTime.hour)}:${_twoDigits(dateTime.minute)}';
   }
 
+  /// Convert number to two digits
   static String _twoDigits(int n) {
     if (n >= 10) return '$n';
     return '0$n';

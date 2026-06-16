@@ -1,33 +1,43 @@
-// lib/features/about/widgets/about_species_section.dart
+/// Species section widget displaying supported algae species with categories
 import 'package:bioalga/core/constants/constants.dart';
+import 'package:bioalga/data/data.dart';
 import 'package:bioalga/data/models/algae_model.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'about_category_chip.dart';
 
 class AboutSpeciesSection extends StatelessWidget {
-  const AboutSpeciesSection({Key? key}) : super(key: key);
+  const AboutSpeciesSection({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final speciesList = algaeData.keys.toList();
+    final speciesList = algaeData.keys
+        .where((key) => key.toLowerCase() != AppStrings.notAlgae)
+        .toList();
     final totalSpecies = speciesList.length;
 
     final categories = {
-      'Cyanobacteria': 0,
-      'Dinoflagellate': 0,
-      'Diatom': 0,
+      AppStrings.cyanobacteria: 0,
+      AppStrings.dinoflagellate: 0,
+      AppStrings.diatom: 0,
+      AppStrings.other: 0,
     };
 
     for (var name in speciesList) {
       final data = algaeData[name] as Map<String, dynamic>;
       final category = data['category'] as String? ?? '';
-      if (category.contains('Cyanobacteria')) {
-        categories['Cyanobacteria'] = (categories['Cyanobacteria'] ?? 0) + 1;
-      } else if (category.contains('Dinoflagellate')) {
-        categories['Dinoflagellate'] = (categories['Dinoflagellate'] ?? 0) + 1;
-      } else if (category.contains('Diatom')) {
-        categories['Diatom'] = (categories['Diatom'] ?? 0) + 1;
+      if (category.contains(AppStrings.cyanobacteria)) {
+        categories[AppStrings.cyanobacteria] =
+            (categories[AppStrings.cyanobacteria] ?? 0) + 1;
+      } else if (category.contains(AppStrings.dinoflagellate)) {
+        categories[AppStrings.dinoflagellate] =
+            (categories[AppStrings.dinoflagellate] ?? 0) + 1;
+      } else if (category.contains(AppStrings.diatom)) {
+        categories[AppStrings.diatom] =
+            (categories[AppStrings.diatom] ?? 0) + 1;
+      } else {
+        categories[AppStrings.other] =
+            (categories[AppStrings.other] ?? 0) + 1;
       }
     }
 
@@ -40,7 +50,7 @@ class AboutSpeciesSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'SUPPORTED SPECIES',
+              AppStrings.supportedSpecies,
               style: GoogleFonts.poppins(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
@@ -81,7 +91,7 @@ class AboutSpeciesSection extends StatelessWidget {
             ),
           ),
           Text(
-            'Total Species',
+            AppStrings.totalSpecies,
             style: GoogleFonts.poppins(
               fontSize: 12,
               fontWeight: FontWeight.w500,
@@ -94,25 +104,31 @@ class AboutSpeciesSection extends StatelessWidget {
   }
 
   Widget _buildCategoriesRow(Map<String, int> categories) {
-    return Row(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
       children: [
         AboutCategoryChip(
-          label: 'Cyanobacteria',
-          count: categories['Cyanobacteria'] ?? 0,
+          label: AppStrings.cyanobacteria,
+          count: categories[AppStrings.cyanobacteria] ?? 0,
           color: Colors.blue,
         ),
-        const SizedBox(width: 6),
         AboutCategoryChip(
-          label: 'Dinoflagellate',
-          count: categories['Dinoflagellate'] ?? 0,
+          label: AppStrings.dinoflagellate,
+          count: categories[AppStrings.dinoflagellate] ?? 0,
           color: Colors.purple,
         ),
-        const SizedBox(width: 6),
         AboutCategoryChip(
-          label: 'Diatom',
-          count: categories['Diatom'] ?? 0,
+          label: AppStrings.diatom,
+          count: categories[AppStrings.diatom] ?? 0,
           color: Colors.orange,
         ),
+        if ((categories[AppStrings.other] ?? 0) > 0)
+          AboutCategoryChip(
+            label: AppStrings.other,
+            count: categories[AppStrings.other] ?? 0,
+            color: Colors.grey,
+          ),
       ],
     );
   }
@@ -124,29 +140,44 @@ class AboutSpeciesSection extends StatelessWidget {
       children: speciesList.map((species) {
         final data = algaeData[species] as Map<String, dynamic>;
         final isToxic = data['isToxic'] as bool? ?? false;
-        final isNontoxic = species.toLowerCase() == 'nontoxic';
-        // تلوين خاص لـ Nontoxic (لون مختلف للدلالة)
-        final chipColor = isNontoxic
-            ? AppColors.infoBlue
-            : (isToxic ? AppColors.toxicRed : AppColors.accentGreen);
+        final isNontoxic = species.toLowerCase() == AppStrings.nontoxicLower;
+
+        late final Color chipColor;
+        if (isNontoxic) {
+          chipColor = AppColors.infoBlue;
+        } else if (isToxic) {
+          chipColor = AppColors.toxicRed;
+        } else {
+          chipColor = AppColors.accentGreen;
+        }
+
         final backgroundColor = chipColor.withOpacity(0.1);
         final borderColor = chipColor.withOpacity(0.3);
 
-        return Chip(
-          label: Text(
-            species,
-            style: GoogleFonts.roboto(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: chipColor,
+        final tooltipMessage = isToxic
+            ? AppStrings.toxicHandleCare
+            : isNontoxic
+            ? AppStrings.generalNonToxic
+            : AppStrings.nonToxicSpecies;
+
+        return Tooltip(
+          message: tooltipMessage,
+          child: Chip(
+            label: Text(
+              species,
+              style: GoogleFonts.roboto(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: chipColor,
+              ),
             ),
+            backgroundColor: backgroundColor,
+            side: BorderSide(color: borderColor, width: 1),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           ),
-          backgroundColor: backgroundColor,
-          side: BorderSide(color: borderColor, width: 1),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         );
       }).toList(),
     );

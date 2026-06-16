@@ -1,20 +1,20 @@
-// lib/features/about/presentation/widgets/about_technology_section.dart
+/// Technology stack section widget displaying app technologies
 import 'package:bioalga/core/constants/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AboutTechnologySection extends StatelessWidget {
-  const AboutTechnologySection({Key? key}) : super(key: key);
+  const AboutTechnologySection({super.key});
 
   @override
   Widget build(BuildContext context) {
     final technologies = [
-      'Flutter & Dart',
-      'Deep Learning (CNN)',
-      'TensorFlow Lite',
-      'REST API Integration',
-      'SQLite / Local Storage',
-      'PDF Generation',
+      AppStrings.techFlutter,
+      AppStrings.techDeepLearning,
+      AppStrings.techTensorFlow,
+      AppStrings.techRestApi,
+      AppStrings.techSqlite,
+      AppStrings.techPdfGeneration,
     ];
 
     return Card(
@@ -26,7 +26,7 @@ class AboutTechnologySection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'TECHNOLOGY STACK',
+              AppStrings.technologyStack,
               style: GoogleFonts.poppins(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,

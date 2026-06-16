@@ -1,3 +1,4 @@
+/// Singleton API service manager that wraps AlgaeApiService
 import 'package:bioalga/core/services/algae_api_service.dart';
 
 class ApiService {
@@ -7,16 +8,16 @@ class ApiService {
 
   late final AlgaeApiService algaeApi;
 
+  /// Initialize the API service and check server health on startup
   static Future<void> initialize() async {
     _instance.algaeApi = AlgaeApiService();
-
-    // Optional: Check health on startup
     final isHealthy = await _instance.algaeApi.healthCheck();
-    print('API Service initialized. Health: $isHealthy');
   }
 
+  /// Get the algae API service instance
   static AlgaeApiService get algae => _instance.algaeApi;
 
+  /// Dispose and release resources
   static void dispose() {
     _instance.algaeApi.dispose();
   }
