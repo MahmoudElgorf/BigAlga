@@ -18,6 +18,7 @@ class HistoryDrawer extends StatefulWidget {
 class _HistoryDrawerState extends State<HistoryDrawer> {
   List<Map<String, dynamic>> _analysisHistory = [];
   bool _isLoading = true;
+  bool _isPickingImage = false;
 
   static const Map<String, String> _algaeImages = {
     'Anabaena': 'assets/images/anabaena.png',
@@ -60,6 +61,10 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
   }
 
   Future<void> _pickImageFromGallery(BuildContext context) async {
+    if (_isPickingImage) return;
+
+    setState(() => _isPickingImage = true);
+
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(
@@ -69,9 +74,10 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
         imageQuality: 85,
       );
 
-      if (image != null) {
+      if (image != null && mounted) {
         Navigator.pop(context);
-        Navigator.push(
+
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ResultsPage(
@@ -81,7 +87,13 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
         );
       }
     } catch (e) {
-      _showSnackBar(ErrorStrings.imagePickError, AppColors.errorRed);
+      if (mounted) {
+        _showSnackBar(ErrorStrings.imagePickError, AppColors.errorRed);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingImage = false);
+      }
     }
   }
 
@@ -117,12 +129,10 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
   Future<void> _generatePDF(Map<String, dynamic> analysis) async {
     try {
       final algaeResult = _createAlgaeResultFromHistory(analysis);
-
       await PDFService.generateAndSaveReport(
         imageFile: File(analysis['imagePath']),
         result: algaeResult,
       );
-
       _showSnackBar(AppStrings.pdfSavedSuccessfully, AppColors.successGreen);
     } catch (e) {
       _showSnackBar(ErrorStrings.pdfSaveFailed, AppColors.errorRed);
@@ -237,14 +247,11 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
 
   void _viewAnalysisDetails(Map<String, dynamic> analysis) {
     final imageFile = File(analysis['imagePath']);
-
     if (!imageFile.existsSync()) {
       _showSnackBar(ErrorStrings.imageFileNotFound, AppColors.errorRed);
       return;
     }
-
     final algaeResult = _createAlgaeResultFromHistory(analysis);
-
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -533,20 +540,26 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
                         ),
                       ),
                     ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.calendar_today,
-                            size: 14, color: AppColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${analysis['date']} - ${analysis['time']}',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
+                    Container(
+                      constraints: const BoxConstraints(maxWidth: 120),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.calendar_today,
+                              size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '${analysis['date']} - ${analysis['time']}',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     if (analysis['isToxic'] == true)
                       Container(
@@ -676,9 +689,20 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
             ),
             const SizedBox(height: 30),
             ElevatedButton.icon(
-              onPressed: () => _pickImageFromGallery(context),
-              icon: const Icon(Icons.add_photo_alternate),
-              label: const Text(AppStrings.startNewAnalysis),
+              onPressed: _isPickingImage ? null : () => _pickImageFromGallery(context),
+              icon: _isPickingImage
+                  ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primaryBlue,
+                ),
+              )
+                  : const Icon(Icons.add_photo_alternate),
+              label: Text(
+                _isPickingImage ? AppStrings.loading : AppStrings.startNewAnalysis,
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: AppColors.primaryBlue,

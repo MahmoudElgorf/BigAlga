@@ -273,6 +273,8 @@ const Map<String, Map<String, dynamic>> algaeData = {
       'Aquaculture after species identification and safety testing',
     ],
   },
+
+
 };
 
 Map<String, dynamic> getAlgaeData(String name) {

@@ -19,6 +19,8 @@ class ResultsController extends ChangeNotifier {
   String error = '';
   bool isGeneratingPDF = false;
   BuildContext? _context;
+  bool _isInitialized = false;
+  bool _isDisposed = false;
 
   ResultsController({required this.imageFile, this.preloadedResult});
 
@@ -35,9 +37,14 @@ class ResultsController extends ChangeNotifier {
   }
 
   Future<void> init() async {
+    if (_isInitialized || _isDisposed) return;
+    _isInitialized = true;
+
     try {
       await ApiService.initialize();
     } catch (e) {}
+
+    if (_isDisposed) return;
 
     if (preloadedResult != null) {
       _initializeWithPreloadedResult();
@@ -47,40 +54,50 @@ class ResultsController extends ChangeNotifier {
   }
 
   void _initializeWithPreloadedResult() {
+    if (_isDisposed) return;
     final r = preloadedResult!;
-    if (r.name.toLowerCase() == AppStrings.notAlgaeLower) {
+    if (r.name.toLowerCase() == 'not_algae' ||
+        r.category.toLowerCase() == 'non-algae') {
       error = 'not_algae';
       isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) notifyListeners();
       return;
     }
     result = r;
     isLoading = false;
-    notifyListeners();
+    if (!_isDisposed) notifyListeners();
     _saveAnalysisToHistory(r);
   }
 
   Future<void> _analyzeImage() async {
+    if (_isDisposed) return;
     try {
       final r = await MLService().classifyImage(imageFile);
-      if (r.name.toLowerCase() == AppStrings.notAlgaeLower) {
+
+      if (_isDisposed) return;
+
+      if (r.name.toLowerCase() == 'not_algae' ||
+          r.category.toLowerCase() == 'non-algae') {
         error = 'not_algae';
         isLoading = false;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
         return;
       }
+
       result = r;
       isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) notifyListeners();
       await _saveAnalysisToHistory(r);
     } catch (e) {
+      if (_isDisposed) return;
       error = 'error';
       isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) notifyListeners();
     }
   }
 
   Future<void> _saveAnalysisToHistory(AlgaeResult r) async {
+    if (_isDisposed) return;
     try {
       final now = DateTime.now();
       final data = {
@@ -107,12 +124,12 @@ class ResultsController extends ChangeNotifier {
   }
 
   Future<void> generatePDF() async {
-    if (result == null) return;
+    if (result == null || _isDisposed) return;
     isGeneratingPDF = true;
-    notifyListeners();
+    if (!_isDisposed) notifyListeners();
     try {
       await PDFService.generateAndSaveReport(imageFile: imageFile, result: result!);
-      if (_context != null) {
+      if (_context != null && !_isDisposed) {
         ScaffoldMessenger.of(_context!).showSnackBar(
           SnackBar(
             content: Text(SuccessStrings.pdfSaved),
@@ -121,7 +138,7 @@ class ResultsController extends ChangeNotifier {
         );
       }
     } catch (e) {
-      if (_context != null) {
+      if (_context != null && !_isDisposed) {
         ScaffoldMessenger.of(_context!).showSnackBar(
           SnackBar(
             content: Text(ErrorStrings.pdfSaveFailed),
@@ -131,12 +148,12 @@ class ResultsController extends ChangeNotifier {
       }
     } finally {
       isGeneratingPDF = false;
-      notifyListeners();
+      if (!_isDisposed) notifyListeners();
     }
   }
 
   void openChatAssistant(BuildContext context) {
-    if (result == null) return;
+    if (result == null || _isDisposed) return;
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -149,8 +166,17 @@ class ResultsController extends ChangeNotifier {
     );
   }
 
+  void reset() {
+    _isDisposed = true;
+    isLoading = false;
+    result = null;
+    error = '';
+    isGeneratingPDF = false;
+  }
+
   @override
   void dispose() {
+    reset();
     _context = null;
     super.dispose();
   }

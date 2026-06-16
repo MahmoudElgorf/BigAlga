@@ -26,9 +26,9 @@ class AppUtils {
     }
   }
 
-  /// Navigate to a new page
-  static void navigateTo(BuildContext context, Widget page) {
-    Navigator.push(
+  /// Navigate to a new page with await support
+  static Future<void> navigateTo(BuildContext context, Widget page) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => page),
     );

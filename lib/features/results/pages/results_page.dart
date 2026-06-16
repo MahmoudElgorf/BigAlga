@@ -57,6 +57,23 @@ class _ResultsPageState extends State<ResultsPage> {
         child: ListenableBuilder(
           listenable: _controller,
           builder: (context, _) {
+            // حالة التحميل - تظهر فقط لو في تحميل ولسه مفيش نتيجة
+            if (_controller.isLoading && _controller.result == null) {
+              return Column(
+                children: [
+                  AppHeader(
+                    title: AppStrings.resultsTitle,
+                    isToxic: false,
+                    showBackButton: true,
+                  ),
+                  const Expanded(
+                    child: LoadingIndicator(message: AppStrings.analyzing),
+                  ),
+                ],
+              );
+            }
+
+            // بعد ما يخلص تحميل ويظهر النتيجة
             return Column(
               children: [
                 AppHeader(
@@ -65,13 +82,13 @@ class _ResultsPageState extends State<ResultsPage> {
                   showBackButton: true,
                 ),
                 Expanded(
-                  child: _controller.isLoading
-                      ? LoadingIndicator(message: AppStrings.analyzing)
-                      : _controller.error == 'not_algae'
+                  child: _controller.error == 'not_algae'
                       ? const ResultNotAlgaeError()
                       : _controller.error == 'error'
                       ? const ResultGenericError()
-                      : _buildResults(context),
+                      : _controller.result != null
+                      ? _buildResults(context)
+                      : const SizedBox.shrink(),
                 ),
               ],
             );

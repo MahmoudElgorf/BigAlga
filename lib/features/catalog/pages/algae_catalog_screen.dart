@@ -3,6 +3,7 @@ import 'package:bioalga/features/catalog/controllers/catalog_controller.dart';
 import 'package:bioalga/shared/widgets/gradient_background.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../widgets/catalog_header.dart';
 import '../widgets/catalog_body.dart';
 
@@ -22,22 +23,26 @@ class _AlgaeCatalogScreenState extends State<AlgaeCatalogScreen>
   @override
   void initState() {
     super.initState();
+
     _controller = CatalogController();
+
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 250),
       vsync: this,
     );
+
     _fadeAnimation = CurvedAnimation(
       parent: _animationController,
-      curve: Curves.easeInOutCubic,
+      curve: Curves.easeOut,
     );
+
     _animationController.forward();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
     _animationController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -52,19 +57,26 @@ class _AlgaeCatalogScreenState extends State<AlgaeCatalogScreen>
         body: Stack(
           children: [
             const GradientBackground(child: SizedBox.shrink()),
-            CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: CatalogHeader(totalCount: _controller.totalCount),
-                ),
-                SliverToBoxAdapter(
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: CatalogBody(controller: _controller),
+
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: CatalogHeader(
+                      totalCount: _controller.totalCount,
+                    ),
                   ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 40)),
-              ],
+
+                  CatalogBody(
+                    controller: _controller,
+                  ),
+
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: 40),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

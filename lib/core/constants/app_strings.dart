@@ -297,4 +297,6 @@ class AppStrings {
 
   // Loading Indicator
   static const String loading = 'Loading...';
+  // Not Algae
+  static const String nonAlgae = 'Non-Algae';
 }

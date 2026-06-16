@@ -115,6 +115,7 @@ class AlgaeCard extends StatelessWidget {
                           runSpacing: 4,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
+                            // Toxic/Safe indicator
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                               decoration: BoxDecoration(
@@ -141,7 +142,11 @@ class AlgaeCard extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            Flexible(
+                            // Category - بدون Flexible
+                            Container(
+                              constraints: BoxConstraints(
+                                maxWidth: constraints.maxWidth * 0.4,
+                              ),
                               child: Text(
                                 _getShortCategory(category),
                                 style: TextStyle(

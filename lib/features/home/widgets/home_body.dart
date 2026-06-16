@@ -106,6 +106,7 @@ class HomeBody extends StatelessWidget {
       icon: Icons.photo_library,
       onPressed: () => controller.pickImageFromGallery(),
       color: controller.isModelReady ? AppColors.primaryBlue : Colors.grey,
+      isLoading: controller.isLoading, // ربط حالة التحميل
     );
   }
 

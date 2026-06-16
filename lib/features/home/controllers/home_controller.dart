@@ -60,11 +60,15 @@ class HomeController extends ChangeNotifier {
           await _processImageAndNavigate(imageFile);
         } else {
           AppUtils.showImageTooLargeSnackBar(_context!);
+          isLoading = false;
+          notifyListeners();
         }
       } else {
         if (_context != null) {
           AppUtils.showErrorSnackBar(_context!, AppStrings.noImageSelected);
         }
+        isLoading = false;
+        notifyListeners();
       }
     } catch (e) {
       if (_context != null) {
@@ -73,7 +77,6 @@ class HomeController extends ChangeNotifier {
           AppStrings.imageSelectionError,
         );
       }
-    } finally {
       isLoading = false;
       notifyListeners();
     }
@@ -113,7 +116,7 @@ class HomeController extends ChangeNotifier {
       final result = await _mlService.classifyImage(imageFile);
 
       if (result.isValid && _context != null) {
-        AppUtils.navigateTo(
+        await AppUtils.navigateTo(
           _context!,
           ResultsPage(imageFile: imageFile, result: result),
         );
@@ -130,6 +133,10 @@ class HomeController extends ChangeNotifier {
           '${AppStrings.analysisError}: ${e.toString()}',
         );
       }
+    } finally {
+      // ✅ إخفاء التحميل بعد ما الـ Page تفتح أو يحصل خطأ
+      isLoading = false;
+      notifyListeners();
     }
   }
 
