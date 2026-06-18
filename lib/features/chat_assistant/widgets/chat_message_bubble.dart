@@ -1,6 +1,6 @@
 /// Message bubble widget for chat
 import 'package:bioalga/core/constants/constants.dart';
-import 'package:bioalga/features/chat_assistant_screen/widgets/chat_message.dart';
+import 'package:bioalga/features/chat_assistant/widgets/chat_message.dart';
 import 'package:flutter/material.dart';
 
 class ChatMessageBubble extends StatelessWidget {

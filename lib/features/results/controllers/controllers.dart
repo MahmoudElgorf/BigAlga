@@ -1,6 +1,6 @@
 /// Results controller for managing state and business logic
 import 'dart:io';
-import 'package:bioalga/features/chat_assistant_screen/pages/chat_assistant_screen.dart';
+import 'package:bioalga/features/chat_assistant/pages/chat_assistant_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/services/api_service.dart';

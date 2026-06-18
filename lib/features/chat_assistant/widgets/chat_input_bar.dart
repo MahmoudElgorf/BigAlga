@@ -1,7 +1,8 @@
 /// Chat input bar with text field and send button
 import 'package:bioalga/core/constants/constants.dart';
-import 'package:bioalga/features/chat_assistant_screen/controllers/chat_assistant_controller.dart';
 import 'package:flutter/material.dart';
+import '../controllers/chat_assistant_controller.dart';
+import '../widgets/chat_suggestions_overlay.dart';
 
 class ChatInputBar extends StatelessWidget {
   final ChatAssistantController controller;
@@ -67,7 +68,11 @@ class ChatInputBar extends StatelessWidget {
         radius: 22,
         child: IconButton(
           icon: const Icon(Icons.help_outline, color: Colors.white, size: 20),
-          onPressed: () => _showQuestionsOverlay(context),
+          onPressed: () => ChatSuggestionsOverlay.show(
+            context,
+            controller.suggestionsButtonKey,
+            controller,
+          ),
           tooltip: AppStrings.suggestedQuestions,
         ),
       ),
@@ -125,10 +130,5 @@ class ChatInputBar extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  void _showQuestionsOverlay(BuildContext context) {
-    // Implement overlay logic or delegate to parent
-    // This can be handled via a callback or using the controller
   }
 }
