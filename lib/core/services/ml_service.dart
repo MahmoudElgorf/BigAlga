@@ -12,12 +12,24 @@ class MLService {
   MLService._internal();
 
   bool _isInitialized = false;
+  bool _isInitializing = false;
   static const String _baseUrl = 'https://algea-image-classififcation.onrender.com';
   static const String _predictEndpoint = '/predict';
+
+   AlgaeResult? _cachedResult;
+  String? _cachedImagePath;
 
   /// Initialize the ML service and check API connection
   Future<void> initModel() async {
     if (_isInitialized) return;
+    if (_isInitializing) {
+      while (_isInitializing) {
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+      return;
+    }
+
+    _isInitializing = true;
 
     try {
       final response = await http.get(Uri.parse('$_baseUrl/'));
@@ -28,11 +40,18 @@ class MLService {
       }
     } catch (e) {
       throw Exception('${ErrorStrings.apiConnectionError}: $e');
+    } finally {
+      _isInitializing = false;
     }
   }
 
   /// Classify an algae image using the remote API
   Future<AlgaeResult> classifyImage(File imageFile) async {
+    final imagePath = imageFile.path;
+    if (_cachedResult != null && _cachedImagePath == imagePath) {
+      return _cachedResult!;
+    }
+
     if (!_isInitialized) {
       await initModel();
     }
@@ -92,7 +111,7 @@ class MLService {
           });
         }
 
-        return AlgaeResult(
+        final result = AlgaeResult(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           name: algaeName,
           scientificName: algaeInfo['scientificName'],
@@ -115,6 +134,11 @@ class MLService {
           co2PerKg: algaeInfo['co2PerKg'],
           sellable: algaeInfo['sellable'],
         );
+
+        _cachedResult = result;
+        _cachedImagePath = imagePath;
+
+        return result;
       } else {
         throw Exception('${ErrorStrings.apiRequestFailed}: ${response.statusCode}');
       }
@@ -199,6 +223,9 @@ class MLService {
   /// Dispose and reset initialization state
   void dispose() {
     _isInitialized = false;
+    _isInitializing = false;
+    _cachedResult = null;
+    _cachedImagePath = null;
   }
 
   /// Test API connection

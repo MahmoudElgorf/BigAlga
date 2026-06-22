@@ -1,13 +1,13 @@
 /// Home page with algae classification and encyclopedia access
 import 'package:bioalga/features/home/controllers/home_controller.dart';
-import 'package:bioalga/features/home/widgets/animated_background.dart';
-import 'package:bioalga/features/home/widgets/history_drawer.dart';
-import 'package:bioalga/features/home/widgets/home_body.dart';
-import 'package:bioalga/features/home/widgets/home_footer.dart';
-import 'package:bioalga/features/home/widgets/home_header.dart';
-import 'package:bioalga/features/home/widgets/home_overlay.dart';
 import 'package:bioalga/shared/widgets/gradient_background.dart';
 import 'package:flutter/material.dart';
+import '../widgets/home_header.dart';
+import '../widgets/home_body.dart';
+import '../widgets/home_footer.dart';
+import '../widgets/home_overlay.dart';
+import '../widgets/animated_background.dart';
+import '../widgets/history_drawer.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,9 +23,15 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _controller = HomeController();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.attachContext(context);
-      _controller.initializeModel();
+
+      _controller.checkModelStatus();
+
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _controller.initializeModel();
+      });
     });
   }
 

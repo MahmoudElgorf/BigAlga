@@ -688,27 +688,6 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 30),
-            ElevatedButton.icon(
-              onPressed: _isPickingImage ? null : () => _pickImageFromGallery(context),
-              icon: _isPickingImage
-                  ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.primaryBlue,
-                ),
-              )
-                  : const Icon(Icons.add_photo_alternate),
-              label: Text(
-                _isPickingImage ? AppStrings.loading : AppStrings.startNewAnalysis,
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: AppColors.primaryBlue,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-            ),
           ],
         ),
       ),

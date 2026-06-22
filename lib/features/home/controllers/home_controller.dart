@@ -19,33 +19,54 @@ class HomeController extends ChangeNotifier {
     _context = context;
   }
 
+  Future<void> checkModelStatus() async {
+    try {
+      final isHealthy = await _mlService.testConnection();
+      isModelReady = isHealthy;
+      notifyListeners();
+    } catch (e) {
+      isModelReady = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> initializeModel() async {
     try {
       isTestingConnection = true;
       notifyListeners();
-      await _mlService.initModel();
-      isModelReady = true;
+
+      final isHealthy = await _mlService.testConnection();
+      isModelReady = isHealthy;
       isTestingConnection = false;
       notifyListeners();
     } catch (e) {
+      try {
+        await _mlService.initModel();
+        isModelReady = true;
+      } catch (e2) {
+        isModelReady = false;
+        if (_context != null) {
+          AppUtils.showErrorSnackBar(
+            _context!,
+            ErrorStrings.unableToConnectService,
+          );
+        }
+      }
       isTestingConnection = false;
       notifyListeners();
-      if (_context != null) {
-        AppUtils.showErrorSnackBar(
-          _context!,
-          ErrorStrings.unableToConnectService,
-        );
-      }
     }
   }
 
   Future<void> pickImageFromGallery() async {
     if (!isModelReady) {
-      AppUtils.showErrorSnackBar(
-        _context!,
-        ErrorStrings.serviceNotAvailable,
-      );
-      return;
+      await initializeModel();
+      if (!isModelReady) {
+        AppUtils.showErrorSnackBar(
+          _context!,
+          ErrorStrings.serviceNotAvailable,
+        );
+        return;
+      }
     }
 
     isLoading = true;
@@ -115,6 +136,9 @@ class HomeController extends ChangeNotifier {
 
       final result = await _mlService.classifyImage(imageFile);
 
+      isLoading = false;
+      notifyListeners();
+
       if (result.isValid && _context != null) {
         await AppUtils.navigateTo(
           _context!,
@@ -127,16 +151,14 @@ class HomeController extends ChangeNotifier {
         );
       }
     } catch (e) {
+      isLoading = false;
+      notifyListeners();
       if (_context != null) {
         AppUtils.showApiErrorSnackBar(
           _context!,
           '${AppStrings.analysisError}: ${e.toString()}',
         );
       }
-    } finally {
-      // ✅ إخفاء التحميل بعد ما الـ Page تفتح أو يحصل خطأ
-      isLoading = false;
-      notifyListeners();
     }
   }
 
