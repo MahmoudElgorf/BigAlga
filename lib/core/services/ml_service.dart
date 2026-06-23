@@ -16,12 +16,13 @@ class MLService {
   static const String _baseUrl = 'https://algea-image-classififcation.onrender.com';
   static const String _predictEndpoint = '/predict';
 
-   AlgaeResult? _cachedResult;
+  AlgaeResult? _cachedResult;
   String? _cachedImagePath;
 
   /// Initialize the ML service and check API connection
   Future<void> initModel() async {
     if (_isInitialized) return;
+
     if (_isInitializing) {
       while (_isInitializing) {
         await Future.delayed(const Duration(milliseconds: 50));
@@ -45,6 +46,17 @@ class MLService {
     }
   }
 
+  /// Wait for initialization to complete
+  Future<void> _waitForInitialization() async {
+    while (_isInitializing) {
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+
+    if (!_isInitialized) {
+      await initModel();
+    }
+  }
+
   /// Classify an algae image using the remote API
   Future<AlgaeResult> classifyImage(File imageFile) async {
     final imagePath = imageFile.path;
@@ -52,9 +64,7 @@ class MLService {
       return _cachedResult!;
     }
 
-    if (!_isInitialized) {
-      await initModel();
-    }
+    await _waitForInitialization();
 
     try {
       final startTime = DateTime.now();

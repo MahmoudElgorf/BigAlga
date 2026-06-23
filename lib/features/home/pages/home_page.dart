@@ -27,10 +27,8 @@ class _HomePageState extends State<HomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.attachContext(context);
 
-      _controller.checkModelStatus();
-
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _controller.initializeModel();
+      _controller.initializeModel().then((_) {
+        _controller.checkModelStatus();
       });
     });
   }

@@ -1,6 +1,6 @@
 /// Home controller for managing state and business logic
 import 'dart:io';
-import 'package:bioalga/features/results/pages/pages.dart';
+import 'package:bioalga/features/results/pages/results_page.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/services/ml_service.dart';
@@ -11,12 +11,39 @@ class HomeController extends ChangeNotifier {
   bool isLoading = false;
   bool isModelReady = false;
   bool isTestingConnection = false;
+  bool _isInitializing = false;
   BuildContext? _context;
 
   final MLService _mlService = MLService();
 
   void attachContext(BuildContext context) {
     _context = context;
+  }
+
+  Future<void> initializeModel() async {
+    if (_isInitializing) return;
+    if (isModelReady) return;
+
+    _isInitializing = true;
+    isTestingConnection = true;
+    notifyListeners();
+
+    try {
+      await _mlService.initModel();
+      isModelReady = true;
+    } catch (e) {
+      isModelReady = false;
+      if (_context != null) {
+        AppUtils.showErrorSnackBar(
+          _context!,
+          ErrorStrings.unableToConnectService,
+        );
+      }
+    } finally {
+      isTestingConnection = false;
+      _isInitializing = false;
+      notifyListeners();
+    }
   }
 
   Future<void> checkModelStatus() async {
@@ -30,41 +57,16 @@ class HomeController extends ChangeNotifier {
     }
   }
 
-  Future<void> initializeModel() async {
-    try {
-      isTestingConnection = true;
-      notifyListeners();
-
-      final isHealthy = await _mlService.testConnection();
-      isModelReady = isHealthy;
-      isTestingConnection = false;
-      notifyListeners();
-    } catch (e) {
-      try {
-        await _mlService.initModel();
-        isModelReady = true;
-      } catch (e2) {
-        isModelReady = false;
-        if (_context != null) {
-          AppUtils.showErrorSnackBar(
-            _context!,
-            ErrorStrings.unableToConnectService,
-          );
-        }
-      }
-      isTestingConnection = false;
-      notifyListeners();
-    }
-  }
-
   Future<void> pickImageFromGallery() async {
     if (!isModelReady) {
       await initializeModel();
       if (!isModelReady) {
-        AppUtils.showErrorSnackBar(
-          _context!,
-          ErrorStrings.serviceNotAvailable,
-        );
+        if (_context != null) {
+          AppUtils.showErrorSnackBar(
+            _context!,
+            ErrorStrings.serviceNotAvailable,
+          );
+        }
         return;
       }
     }
