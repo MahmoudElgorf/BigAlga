@@ -1,4 +1,5 @@
 /// Loading indicator widget with custom message
+
 import 'package:flutter/material.dart';
 import '../../core/constants/constants.dart';
 
@@ -12,22 +13,27 @@ class LoadingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.seaGreen),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            message,
-            style: TextStyle(
-              color: AppColors.darkText,
-              fontSize: 16,
+    return RepaintBoundary(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.hourglass_empty_rounded,
+              color: AppColors.seaGreen,
+              size: 42,
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.darkText,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

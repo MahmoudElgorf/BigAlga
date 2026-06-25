@@ -1,11 +1,13 @@
 /// AI chat assistant screen for algae-related questions
+
 import 'package:bioalga/core/constants/constants.dart';
-import 'package:bioalga/shared/widgets/gradient_background.dart';
 import 'package:bioalga/shared/widgets/app_header.dart';
+import 'package:bioalga/shared/widgets/gradient_background.dart';
 import 'package:flutter/material.dart';
+
 import '../controllers/chat_assistant_controller.dart';
-import '../widgets/chat_message_bubble.dart';
 import '../widgets/chat_input_bar.dart';
+import '../widgets/chat_message_bubble.dart';
 import '../widgets/chat_suggestions_overlay.dart';
 
 class ChatAssistantScreen extends StatefulWidget {
@@ -27,13 +29,15 @@ class ChatAssistantScreen extends StatefulWidget {
 }
 
 class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
-  late ChatAssistantController _controller;
-  final TextEditingController _textController = TextEditingController();
-  final GlobalKey _buttonKey = GlobalKey();
+  late final ChatAssistantController _controller;
+  late final TextEditingController _textController;
 
   @override
   void initState() {
     super.initState();
+
+    _textController = TextEditingController();
+
     _controller = ChatAssistantController(
       algaeType: widget.algaeType,
       classificationResult: widget.classificationResult,
@@ -43,6 +47,7 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
 
   @override
   void dispose() {
+    ChatSuggestionsOverlay.remove();
     _textController.dispose();
     _controller.dispose();
     super.dispose();
@@ -50,14 +55,13 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
 
   void _sendMessage() {
     final text = _textController.text.trim();
-    if (text.isEmpty) return;
+
+    if (text.isEmpty || _controller.isLoading) return;
+
     _textController.clear();
     ChatSuggestionsOverlay.remove();
-    _controller.sendMessage(question: text);
-  }
 
-  void _showSuggestions() {
-    ChatSuggestionsOverlay.show(context, _buttonKey, _controller);
+    _controller.sendMessage(question: text);
   }
 
   @override
@@ -72,7 +76,9 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
               isToxic: false,
               showBackButton: true,
             ),
-            _buildDivider(),
+
+            const _ChatDivider(),
+
             Expanded(
               child: ListenableBuilder(
                 listenable: _controller,
@@ -80,17 +86,32 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
                   return ListView.builder(
                     controller: _controller.scrollController,
                     padding: const EdgeInsets.all(16),
+                    keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                     itemCount: _controller.messages.length,
                     itemBuilder: (context, index) {
-                      return ChatMessageBubble(
-                        message: _controller.messages[index],
+                      return RepaintBoundary(
+                        child: ChatMessageBubble(
+                          message: _controller.messages[index],
+                        ),
                       );
                     },
                   );
                 },
               ),
             ),
-            if (_controller.isLoading) _buildProgressIndicator(),
+
+            ListenableBuilder(
+              listenable: _controller,
+              builder: (context, _) {
+                if (!_controller.isLoading) {
+                  return const SizedBox.shrink();
+                }
+
+                return const _StaticLoadingBar();
+              },
+            ),
+
             ChatInputBar(
               controller: _controller,
               textController: _textController,
@@ -101,8 +122,13 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
       ),
     );
   }
+}
 
-  Widget _buildDivider() {
+class _ChatDivider extends StatelessWidget {
+  const _ChatDivider();
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       height: 1,
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -119,13 +145,23 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
       ),
     );
   }
+}
 
-  Widget _buildProgressIndicator() {
+class _StaticLoadingBar extends StatelessWidget {
+  const _StaticLoadingBar();
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: LinearProgressIndicator(
-        backgroundColor: AppColors.primaryBlue.withOpacity(0.2),
-        valueColor: AlwaysStoppedAnimation<Color>(AppColors.aqua),
+      child: RepaintBoundary(
+        child: Container(
+          height: 4,
+          decoration: BoxDecoration(
+            color: AppColors.aqua,
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
       ),
     );
   }

@@ -1,18 +1,21 @@
 /// Results page displaying algae classification results with PDF and AI assistant
+
 import 'dart:io';
+
 import 'package:bioalga/core/constants/constants.dart';
 import 'package:bioalga/data/data.dart';
 import 'package:bioalga/features/results/controllers/controllers.dart';
 import 'package:bioalga/shared/widgets/app_header.dart';
+import 'package:bioalga/shared/widgets/gradient_background.dart';
+import 'package:bioalga/shared/widgets/loading_indicator.dart';
 import 'package:flutter/material.dart';
-import '../../../../shared/widgets/gradient_background.dart';
-import '../../../../shared/widgets/loading_indicator.dart';
-import '../widgets/result_error.dart';
-import '../widgets/result_indicators.dart';
-import '../widgets/result_buttons.dart';
-import '../widgets/result_image.dart';
+
 import '../widgets/algae_info.dart';
+import '../widgets/result_buttons.dart';
 import '../widgets/result_card.dart';
+import '../widgets/result_error.dart';
+import '../widgets/result_image.dart';
+import '../widgets/result_indicators.dart';
 
 class ResultsPage extends StatefulWidget {
   final File imageFile;
@@ -29,16 +32,20 @@ class ResultsPage extends StatefulWidget {
 }
 
 class _ResultsPageState extends State<ResultsPage> {
-  late ResultsController _controller;
+  late final ResultsController _controller;
 
   @override
   void initState() {
     super.initState();
+
     _controller = ResultsController(
       imageFile: widget.imageFile,
       preloadedResult: widget.result,
     );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
       _controller.attachContext(context);
       _controller.init();
     });
@@ -57,38 +64,23 @@ class _ResultsPageState extends State<ResultsPage> {
         child: ListenableBuilder(
           listenable: _controller,
           builder: (context, _) {
-            // حالة التحميل - تظهر فقط لو في تحميل ولسه مفيش نتيجة
-            if (_controller.isLoading && _controller.result == null) {
-              return Column(
-                children: [
-                  AppHeader(
-                    title: AppStrings.resultsTitle,
-                    isToxic: false,
-                    showBackButton: true,
-                  ),
-                  const Expanded(
-                    child: LoadingIndicator(message: AppStrings.analyzing),
-                  ),
-                ],
-              );
-            }
+            final result = _controller.result;
+            final isLoadingWithoutResult =
+                _controller.isLoading && result == null;
 
-            // بعد ما يخلص تحميل ويظهر النتيجة
             return Column(
               children: [
                 AppHeader(
                   title: AppStrings.resultsTitle,
-                  isToxic: _controller.result?.isToxic ?? false,
+                  isToxic: result?.isToxic ?? false,
                   showBackButton: true,
                 ),
                 Expanded(
-                  child: _controller.error == 'not_algae'
-                      ? const ResultNotAlgaeError()
-                      : _controller.error == 'error'
-                      ? const ResultGenericError()
-                      : _controller.result != null
-                      ? _buildResults(context)
-                      : const SizedBox.shrink(),
+                  child: _buildContent(
+                    context,
+                    result,
+                    isLoadingWithoutResult,
+                  ),
                 ),
               ],
             );
@@ -98,40 +90,112 @@ class _ResultsPageState extends State<ResultsPage> {
     );
   }
 
-  Widget _buildResults(BuildContext context) {
-    final r = _controller.result!;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          ResultImagePreview(imageFile: widget.imageFile),
-          const SizedBox(height: 20),
-          ResultCard(
-            name: r.name,
-            scientificName: r.scientificName,
-            confidence: r.confidence,
-            confidenceLevel: _controller.getConfidenceLevel(r.confidence),
-            isToxic: r.isToxic,
-            toxicityWarning: r.toxicityWarning,
-          ),
-          const SizedBox(height: 16),
-          AlgaeInfo(algaeType: r.name, fullResult: r),
-          const SizedBox(height: 16),
-          ConfidenceIndicator(confidence: r.confidence),
-          const SizedBox(height: 16),
-          if (r.sellable.isNotEmpty && r.sellable != AppStrings.unknown)
-            SellableIndicator(sellable: r.sellable),
-          const SizedBox(height: 16),
-          PdfButton(
-            isLoading: _controller.isGeneratingPDF,
-            onPressed: _controller.generatePDF,
-          ),
-          const SizedBox(height: 12),
-          AiAssistantButton(
-            onPressed: () => _controller.openChatAssistant(context),
-          ),
-          const SizedBox(height: 20),
-        ],
+  Widget _buildContent(
+      BuildContext context,
+      AlgaeResult? result,
+      bool isLoadingWithoutResult,
+      ) {
+    if (isLoadingWithoutResult) {
+      return const LoadingIndicator(
+        message: AppStrings.analyzing,
+      );
+    }
+
+    if (_controller.error == 'not_algae') {
+      return const ResultNotAlgaeError();
+    }
+
+    if (_controller.error == 'error') {
+      return const ResultGenericError();
+    }
+
+    if (result == null) {
+      return const SizedBox.shrink();
+    }
+
+    return _ResultsContent(
+      imageFile: widget.imageFile,
+      result: result,
+      controller: _controller,
+    );
+  }
+}
+
+class _ResultsContent extends StatelessWidget {
+  final File imageFile;
+  final AlgaeResult result;
+  final ResultsController controller;
+
+  const _ResultsContent({
+    required this.imageFile,
+    required this.result,
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          children: [
+            ResultImagePreview(imageFile: imageFile),
+            const SizedBox(height: 20),
+
+            ResultCard(
+              name: result.name,
+              scientificName: result.scientificName,
+              confidence: result.confidence,
+              confidenceLevel: controller.getConfidenceLevel(
+                result.confidence,
+              ),
+              isToxic: result.isToxic,
+              toxicityWarning: result.toxicityWarning,
+            ),
+
+            const SizedBox(height: 16),
+
+            AlgaeInfo(
+              algaeType: result.name,
+              fullResult: result,
+            ),
+
+            const SizedBox(height: 16),
+
+            ConfidenceIndicator(
+              confidence: result.confidence,
+            ),
+
+            if (result.sellable.isNotEmpty &&
+                result.sellable != AppStrings.unknown) ...[
+              const SizedBox(height: 16),
+              SellableIndicator(
+                sellable: result.sellable,
+              ),
+            ],
+
+            const SizedBox(height: 16),
+
+            ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) {
+                return PdfButton(
+                  isLoading: controller.isGeneratingPDF,
+                  onPressed: controller.generatePDF,
+                );
+              },
+            ),
+
+            const SizedBox(height: 12),
+
+            AiAssistantButton(
+              onPressed: () => controller.openChatAssistant(context),
+            ),
+
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }

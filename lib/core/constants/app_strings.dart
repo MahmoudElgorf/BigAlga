@@ -265,7 +265,7 @@ class AppStrings {
   // Results Page
   static const String noAlgaeDetectedTitle = 'No Algae Detected';
   static const String noAlgaeDetectedMessage = 'This image does not contain algae. Please upload an image of algae for accurate classification.';
-  static const String tipsForBetterResults = '📸 Tips for better results:';
+  static const String tipsForBetterResults = 'Tips for better results:';
   static const String tipFocus = 'Focus clearly on the algae';
   static const String tipLighting = 'Ensure good lighting';
   static const String tipCenter = 'Center the algae in the frame';

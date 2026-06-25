@@ -1,28 +1,35 @@
 /// Results controller for managing state and business logic
+
 import 'dart:io';
+
+import 'package:bioalga/core/constants/constants.dart';
+import 'package:bioalga/core/services/api_service.dart';
+import 'package:bioalga/core/services/history_service.dart';
+import 'package:bioalga/core/services/ml_service.dart';
+import 'package:bioalga/core/services/pdf_service.dart';
+import 'package:bioalga/data/models/algae_model.dart';
 import 'package:bioalga/features/chat_assistant/pages/chat_assistant_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/services/api_service.dart';
-import '../../../../core/services/history_service.dart';
-import '../../../../core/services/ml_service.dart';
-import '../../../../core/services/pdf_service.dart';
-import '../../../../core/constants/constants.dart';
-import '../../../../data/models/algae_model.dart';
 
 class ResultsController extends ChangeNotifier {
   final File imageFile;
   final AlgaeResult? preloadedResult;
 
   AlgaeResult? result;
-  bool isLoading = true;
+  bool isLoading;
   String error = '';
   bool isGeneratingPDF = false;
+
   BuildContext? _context;
   bool _isInitialized = false;
   bool _isDisposed = false;
+  bool _isHistorySaved = false;
 
-  ResultsController({required this.imageFile, this.preloadedResult});
+  ResultsController({
+    required this.imageFile,
+    this.preloadedResult,
+  }) : isLoading = preloadedResult == null;
 
   void attachContext(BuildContext context) {
     _context = context;
@@ -38,68 +45,82 @@ class ResultsController extends ChangeNotifier {
 
   Future<void> init() async {
     if (_isInitialized || _isDisposed) return;
+
     _isInitialized = true;
 
-    try {
-      await ApiService.initialize();
-    } catch (e) {}
-
-    if (_isDisposed) return;
-
     if (preloadedResult != null) {
-      _initializeWithPreloadedResult();
-    } else {
-      await _analyzeImage();
-    }
-  }
-
-  void _initializeWithPreloadedResult() {
-    if (_isDisposed) return;
-    final r = preloadedResult!;
-    if (r.name.toLowerCase() == 'not_algae' ||
-        r.category.toLowerCase() == 'non-algae') {
-      error = 'not_algae';
-      isLoading = false;
-      if (!_isDisposed) notifyListeners();
+      _initializeWithPreloadedResult(preloadedResult!);
       return;
     }
-    result = r;
+
+    await _analyzeImage();
+  }
+
+  void _initializeWithPreloadedResult(AlgaeResult preloaded) {
+    if (_isDisposed) return;
+
+    if (_isNotAlgae(preloaded)) {
+      error = 'not_algae';
+      result = null;
+      isLoading = false;
+      _safeNotify();
+      return;
+    }
+
+    result = preloaded;
     isLoading = false;
-    if (!_isDisposed) notifyListeners();
-    _saveAnalysisToHistory(r);
+    _safeNotify();
+
+    _saveAnalysisToHistory(preloaded);
   }
 
   Future<void> _analyzeImage() async {
     if (_isDisposed) return;
+
+    isLoading = true;
+    _safeNotify();
+
     try {
-      final r = await MLService().classifyImage(imageFile);
+      final analyzedResult = await MLService.instance.classifyImage(imageFile);
 
       if (_isDisposed) return;
 
-      if (r.name.toLowerCase() == 'not_algae' ||
-          r.category.toLowerCase() == 'non-algae') {
+      if (_isNotAlgae(analyzedResult)) {
         error = 'not_algae';
+        result = null;
         isLoading = false;
-        if (!_isDisposed) notifyListeners();
+        _safeNotify();
         return;
       }
 
-      result = r;
+      result = analyzedResult;
       isLoading = false;
-      if (!_isDisposed) notifyListeners();
-      await _saveAnalysisToHistory(r);
-    } catch (e) {
+      _safeNotify();
+
+      await _saveAnalysisToHistory(analyzedResult);
+    } catch (_) {
       if (_isDisposed) return;
+
       error = 'error';
+      result = null;
       isLoading = false;
-      if (!_isDisposed) notifyListeners();
+      _safeNotify();
     }
   }
 
+  bool _isNotAlgae(AlgaeResult r) {
+    return r.name.toLowerCase() == 'not_algae' ||
+        r.category.toLowerCase() == 'non-algae';
+  }
+
   Future<void> _saveAnalysisToHistory(AlgaeResult r) async {
-    if (_isDisposed) return;
+    if (_isDisposed || _isHistorySaved) return;
+
+    _isHistorySaved = true;
+
     try {
       final now = DateTime.now();
+
       final data = {
         'id': HistoryService.generateId(),
         'date': DateFormat('yyyy-MM-dd').format(now),
@@ -119,16 +140,25 @@ class ResultsController extends ChangeNotifier {
         'benefits': r.benefits,
         'uses': r.uses,
       };
+
       await HistoryService.saveAnalysis(data);
-    } catch (e) {}
+    } catch (_) {
+      _isHistorySaved = false;
+    }
   }
 
   Future<void> generatePDF() async {
-    if (result == null || _isDisposed) return;
+    if (result == null || _isDisposed || isGeneratingPDF) return;
+
     isGeneratingPDF = true;
-    if (!_isDisposed) notifyListeners();
+    _safeNotify();
+
     try {
-      await PDFService.generateAndSaveReport(imageFile: imageFile, result: result!);
+      await PDFService.generateAndSaveReport(
+        imageFile: imageFile,
+        result: result!,
+      );
+
       if (_context != null && !_isDisposed) {
         ScaffoldMessenger.of(_context!).showSnackBar(
           SnackBar(
@@ -137,7 +167,7 @@ class ResultsController extends ChangeNotifier {
           ),
         );
       }
-    } catch (e) {
+    } catch (_) {
       if (_context != null && !_isDisposed) {
         ScaffoldMessenger.of(_context!).showSnackBar(
           SnackBar(
@@ -148,35 +178,34 @@ class ResultsController extends ChangeNotifier {
       }
     } finally {
       isGeneratingPDF = false;
-      if (!_isDisposed) notifyListeners();
+      _safeNotify();
     }
   }
 
   void openChatAssistant(BuildContext context) {
     if (result == null || _isDisposed) return;
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ChatAssistantScreen(
+        builder: (_) => ChatAssistantScreen(
           algaeType: result!.name,
           classificationResult: result!.toJson(),
-          analysisId: result?.id,
+          analysisId: result!.id,
         ),
       ),
     );
   }
 
-  void reset() {
-    _isDisposed = true;
-    isLoading = false;
-    result = null;
-    error = '';
-    isGeneratingPDF = false;
+  void _safeNotify() {
+    if (!_isDisposed) {
+      notifyListeners();
+    }
   }
 
   @override
   void dispose() {
-    reset();
+    _isDisposed = true;
     _context = null;
     super.dispose();
   }

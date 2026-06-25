@@ -1,7 +1,8 @@
 /// Home page with algae classification and encyclopedia access
+
 import 'package:bioalga/features/home/controllers/home_controller.dart';
-import 'package:bioalga/shared/widgets/gradient_background.dart';
 import 'package:flutter/material.dart';
+
 import '../widgets/home_header.dart';
 import '../widgets/home_body.dart';
 import '../widgets/home_footer.dart';
@@ -22,14 +23,15 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+
     _controller = HomeController();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
       _controller.attachContext(context);
 
-      _controller.initializeModel().then((_) {
-        _controller.checkModelStatus();
-      });
+      await _controller.initializeModel();
     });
   }
 
@@ -42,17 +44,21 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: HistoryDrawer(),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return Stack(
-            children: [
-              const Positioned.fill(child: AnimatedBackground()),
-              Positioned.fill(
-                child: ListenableBuilder(
-                  listenable: _controller,
-                  builder: (context, _) {
-                    return SingleChildScrollView(
+      drawer: const HistoryDrawer(),
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: AnimatedBackground(),
+          ),
+
+          Positioned.fill(
+            child: ListenableBuilder(
+              listenable: _controller,
+              builder: (context, _) {
+                return Stack(
+                  children: [
+                    SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
                       child: Column(
                         children: [
                           const HomeHeader(),
@@ -61,14 +67,16 @@ class _HomePageState extends State<HomePage> {
                           const HomeFooter(),
                         ],
                       ),
-                    );
-                  },
-                ),
-              ),
-              if (_controller.isLoading) const HomeLoadingOverlay(),
-            ],
-          );
-        },
+                    ),
+
+                    if (_controller.isLoading)
+                      const HomeLoadingOverlay(),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

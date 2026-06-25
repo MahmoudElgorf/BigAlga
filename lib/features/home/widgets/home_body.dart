@@ -1,4 +1,5 @@
 /// Home page main content with cards and buttons
+
 import 'package:bioalga/core/constants/constants.dart';
 import 'package:bioalga/data/data.dart';
 import 'package:bioalga/features/catalog/pages/algae_catalog_screen.dart';
@@ -9,37 +10,42 @@ import 'package:flutter/material.dart';
 class HomeBody extends StatelessWidget {
   final HomeController controller;
 
-  const HomeBody({super.key, required this.controller});
+  const HomeBody({
+    super.key,
+    required this.controller,
+  });
+
+  static final int _totalSpecies = algaeData.keys
+      .where((key) => key.toLowerCase() != AppStrings.notAlgaeLower)
+      .length;
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (context, _) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            children: [
-              _buildFloatingCard(context),
-              const SizedBox(height: 16),
-              _buildActionButton(context),
-              const SizedBox(height: 16),
-              _buildEncyclopediaButton(context),
-              _buildModelStatus(),
-            ],
-          ),
-        );
-      },
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          _FloatingInfoCard(),
+          const SizedBox(height: 16),
+          _ActionButton(controller: controller),
+          const SizedBox(height: 16),
+          _EncyclopediaButton(totalSpecies: _totalSpecies),
+          _ModelStatus(controller: controller),
+        ],
+      ),
     );
   }
+}
 
-  Widget _buildFloatingCard(BuildContext context) {
+class _FloatingInfoCard extends StatelessWidget {
+  const _FloatingInfoCard();
+
+  @override
+  Widget build(BuildContext context) {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeOut,
+        Container(
           padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.95),
@@ -63,6 +69,7 @@ class HomeBody extends StatelessWidget {
               const SizedBox(height: 30),
               Text(
                 AppStrings.scientificAnalysis,
+                textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.displayMedium!.copyWith(
                   color: AppColors.primaryBlue,
                   fontSize: 22,
@@ -93,128 +100,222 @@ class HomeBody extends StatelessWidget {
               AppAssets.appLogo,
               width: 150,
               height: 150,
+              cacheWidth: 300,
+              cacheHeight: 300,
             ),
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildActionButton(BuildContext context) {
-    return PrimaryButton(
-      text: AppStrings.chooseImage,
-      icon: Icons.photo_library,
-      onPressed: () => controller.pickImageFromGallery(),
-      color: controller.isModelReady ? AppColors.primaryBlue : Colors.grey,
-      isLoading: controller.isLoading, // ربط حالة التحميل
+class _ActionButton extends StatelessWidget {
+  final HomeController controller;
+
+  const _ActionButton({
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final bool canClassify =
+            controller.isModelReady && !controller.isLoading;
+
+        return PrimaryButton(
+          text: controller.isModelReady
+              ? AppStrings.chooseImage
+              : AppStrings.testingConnection,
+          icon: Icons.photo_library,
+          onPressed: () {
+            if (!canClassify) return;
+            controller.pickImageFromGallery();
+          },
+          color: canClassify ? AppColors.primaryBlue : Colors.grey,
+          isLoading: controller.isLoading,
+        );
+      },
     );
   }
+}
 
-  Widget _buildEncyclopediaButton(BuildContext context) {
-    final totalSpecies = algaeData.keys
-        .where((key) => key.toLowerCase() != AppStrings.notAlgaeLower)
-        .length;
+class _EncyclopediaButton extends StatelessWidget {
+  final int totalSpecies;
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primaryBlue,
-            AppColors.secondaryBlue,
+  const _EncyclopediaButton({
+    required this.totalSpecies,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.primaryBlue,
+              AppColors.secondaryBlue,
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryBlue.withOpacity(0.3),
+              blurRadius: 15,
+              spreadRadius: 2,
+              offset: const Offset(0, 6),
+            ),
           ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryBlue.withOpacity(0.3),
-            blurRadius: 15,
-            spreadRadius: 2,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AlgaeCatalogScreen(),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AlgaeCatalogScreen(),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: 16,
+                horizontal: 20,
               ),
-            );
-          },
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.menu_book,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.menu_book,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        AppStrings.algaeEncyclopedia,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppStrings.algaeEncyclopedia,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${AppStrings.explore} $totalSpecies ${AppStrings.documentedSpecies}',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 12,
+                        const SizedBox(height: 2),
+                        Text(
+                          '${AppStrings.explore} $totalSpecies ${AppStrings.documentedSpecies}',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildModelStatus() {
-    if (controller.isTestingConnection) {
-      return Column(
+class _ModelStatus extends StatelessWidget {
+  final HomeController controller;
+
+  const _ModelStatus({
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        if (controller.isTestingConnection) {
+          return const _StatusMessage(
+            color: Colors.orange,
+            title: AppStrings.testingConnection,
+            subtitle: AppStrings.connectionMayTakeTime,
+          );
+        }
+
+        if (!controller.isModelReady) {
+          return Column(
+            children: [
+              const _StatusMessage(
+                color: Colors.red,
+                title: AppStrings.serviceUnavailable,
+              ),
+              TextButton(
+                onPressed: controller.retryConnection,
+                child: Text(
+                  AppStrings.reconnect,
+                  style: TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        return const SizedBox.shrink();
+      },
+    );
+  }
+}
+
+class _StatusMessage extends StatelessWidget {
+  final Color color;
+  final String title;
+  final String? subtitle;
+
+  const _StatusMessage({
+    required this.color,
+    required this.title,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
         children: [
-          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
                 width: 10,
                 height: 10,
-                decoration: const BoxDecoration(
-                  color: Colors.orange,
+                decoration: BoxDecoration(
+                  color: color,
                   shape: BoxShape.circle,
                 ),
               ),
               const SizedBox(width: 8),
               Text(
-                AppStrings.testingConnection,
+                title,
                 style: TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 13,
@@ -222,55 +323,18 @@ class HomeBody extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            AppStrings.connectionMayTakeTime,
-            style: TextStyle(
-              color: AppColors.textSecondary.withOpacity(0.7),
-              fontSize: 11,
-            ),
-          ),
-        ],
-      );
-    } else if (!controller.isModelReady) {
-      return Column(
-        children: [
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                AppStrings.serviceUnavailable,
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          TextButton(
-            onPressed: controller.retryConnection,
-            child: Text(
-              AppStrings.reconnect,
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle!,
               style: TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 12,
+                color: AppColors.textSecondary.withOpacity(0.7),
+                fontSize: 11,
               ),
             ),
-          ),
+          ],
         ],
-      );
-    }
-    return Container();
+      ),
+    );
   }
 }
